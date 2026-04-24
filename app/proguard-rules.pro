@@ -1,0 +1,3 @@
+-keep class com.kathakar.app.domain.model.** { *; }
+-keep class com.google.firebase.** { *; }
+-dontwarn okhttp3.**
