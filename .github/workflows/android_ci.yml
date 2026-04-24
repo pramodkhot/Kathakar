@@ -33,9 +33,22 @@ jobs:
           if [ -f "app/google-services.json" ] && [ -s "app/google-services.json" ]; then
             echo "OK: $(wc -c < app/google-services.json) bytes"
           else
-            echo "ERROR: Add GOOGLE_SERVICES_JSON secret in Settings > Secrets > Actions"
+            echo "ERROR: Add GOOGLE_SERVICES_JSON secret"
             exit 1
           fi
+
+      - name: Setup fixed debug keystore
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p ~/.android
+          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+          echo "Keystore written successfully"
+          keytool -list -v \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android | grep "SHA1:"
 
       - name: Install Gradle
         run: |
@@ -45,26 +58,6 @@ jobs:
 
       - name: Build Debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Print SHA-1 fingerprint
-        run: |
-          echo "=== SHA-1 for Firebase ==="
-          # Find the debug keystore wherever Gradle created it
-          KEYSTORE=$(find / -name "debug.keystore" 2>/dev/null | head -1)
-          if [ -n "$KEYSTORE" ]; then
-            echo "Found keystore at: $KEYSTORE"
-            keytool -list -v \
-              -keystore "$KEYSTORE" \
-              -alias androiddebugkey \
-              -storepass android \
-              -keypass android | grep -A1 "SHA1:"
-          else
-            echo "Keystore not found, extracting from APK directly..."
-            keytool -printcert \
-              -jarfile app/build/outputs/apk/debug/app-debug.apk \
-              | grep -A1 "SHA1:"
-          fi
-          echo "=== Add this SHA1 to Firebase Console ===""
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
