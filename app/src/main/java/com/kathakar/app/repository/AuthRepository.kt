@@ -38,38 +38,49 @@ class AuthRepository @Inject constructor(
 
     val currentUserId: String? get() = auth.currentUser?.uid
 
-    suspend fun signInWithGoogle(account: GoogleSignInAccount): Resource<User> = try {
-        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-        val result = auth.signInWithCredential(credential).await()
-        val uid = result.user?.uid ?: return Resource.Error("No UID")
-        if (result.additionalUserInfo?.isNewUser == true) {
-            createUserWithCoins(uid, result.user?.displayName ?: "Reader",
-                result.user?.email ?: "", result.user?.photoUrl?.toString() ?: "")
+    suspend fun signInWithGoogle(account: GoogleSignInAccount): Resource<User> {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+            val result = auth.signInWithCredential(credential).await()
+            val uid = result.user?.uid ?: return Resource.Error("No UID")
+            if (result.additionalUserInfo?.isNewUser == true) {
+                createUserWithCoins(
+                    uid, result.user?.displayName ?: "Reader",
+                    result.user?.email ?: "", result.user?.photoUrl?.toString() ?: ""
+                )
+            }
+            Resource.Success(fetchUser(uid))
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage ?: "Google sign-in failed")
         }
-        Resource.Success(fetchUser(uid))
-    } catch (e: Exception) {
-        Resource.Error(e.localizedMessage ?: "Google sign-in failed")
     }
 
-    suspend fun signInWithEmail(email: String, password: String): Resource<User> = try {
-        val result = auth.signInWithEmailAndPassword(email, password).await()
-        Resource.Success(fetchUser(result.user?.uid ?: return Resource.Error("No UID")))
-    } catch (e: Exception) {
-        Resource.Error(e.localizedMessage ?: "Sign-in failed")
+    suspend fun signInWithEmail(email: String, password: String): Resource<User> {
+        return try {
+            val result = auth.signInWithEmailAndPassword(email, password).await()
+            val uid = result.user?.uid ?: return Resource.Error("No UID")
+            Resource.Success(fetchUser(uid))
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage ?: "Sign-in failed")
+        }
     }
 
-    suspend fun register(name: String, email: String, password: String): Resource<User> = try {
-        val result = auth.createUserWithEmailAndPassword(email, password).await()
-        val uid = result.user?.uid ?: return Resource.Error("No UID")
-        createUserWithCoins(uid, name, email, "")
-        Resource.Success(fetchUser(uid))
-    } catch (e: Exception) {
-        Resource.Error(e.localizedMessage ?: "Registration failed")
+    suspend fun register(name: String, email: String, password: String): Resource<User> {
+        return try {
+            val result = auth.createUserWithEmailAndPassword(email, password).await()
+            val uid = result.user?.uid ?: return Resource.Error("No UID")
+            createUserWithCoins(uid, name, email, "")
+            Resource.Success(fetchUser(uid))
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage ?: "Registration failed")
+        }
     }
 
     fun signOut() = auth.signOut()
 
-    private suspend fun createUserWithCoins(uid: String, name: String, email: String, photoUrl: String) {
+    private suspend fun createUserWithCoins(
+        uid: String, name: String, email: String, photoUrl: String
+    ) {
         val userRef = db.collection(FirestoreCollections.USERS).document(uid)
         val txnRef  = db.collection(FirestoreCollections.COIN_TRANSACTIONS).document()
         db.batch().apply {
@@ -87,7 +98,8 @@ class AuthRepository @Inject constructor(
         }.commit().await()
     }
 
-    private suspend fun fetchUser(uid: String): User =
-        db.collection(FirestoreCollections.USERS).document(uid)
+    private suspend fun fetchUser(uid: String): User {
+        return db.collection(FirestoreCollections.USERS).document(uid)
             .get().await().toObject(User::class.java) ?: User(userId = uid)
+    }
 }
