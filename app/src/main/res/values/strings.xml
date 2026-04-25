@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Kathakar</string>
-    <!-- Replace with your Firebase Web Client ID from:
-         Firebase Console > Authentication > Sign-in method > Google > Web client ID -->
+    843855541873-ub6t3asqtsuok8cpofmula1ib3940c1d.apps.googleusercontent.com
     <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
 </resources>
