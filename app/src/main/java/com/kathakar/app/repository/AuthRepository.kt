@@ -5,7 +5,11 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
-import com.kathakar.app.domain.model.*
+import com.kathakar.app.domain.model.CoinTransaction
+import com.kathakar.app.domain.model.CoinTxnType
+import com.kathakar.app.domain.model.MvpConfig
+import com.kathakar.app.domain.model.User
+import com.kathakar.app.domain.model.UserRole
 import com.kathakar.app.util.FirestoreCollections
 import com.kathakar.app.util.Resource
 import kotlinx.coroutines.channels.awaitClose
@@ -27,8 +31,29 @@ class AuthRepository @Inject constructor(
                 trySend(null)
             } else {
                 db.collection(FirestoreCollections.USERS).document(uid)
-                    .addSnapshotListener { snap, _ ->
-                        trySend(snap?.toObject(User::class.java))
+                    .addSnapshotListener { snap, error ->
+                        if (error != null) {
+                            trySend(null)
+                            return@addSnapshotListener
+                        }
+                        val user = snap?.toObject(User::class.java)
+                        if (user != null) {
+                            trySend(user)
+                        } else {
+                            // User doc doesn't exist yet, create it
+                            val firebaseUser = fbAuth.currentUser
+                            if (firebaseUser != null) {
+                                val newUser = User(
+                                    userId = firebaseUser.uid,
+                                    name = firebaseUser.displayName ?: "User",
+                                    email = firebaseUser.email ?: "",
+                                    photoUrl = firebaseUser.photoUrl?.toString() ?: "",
+                                    role = UserRole.READER,
+                                    coinBalance = MvpConfig.FREE_COINS_ON_SIGNUP
+                                )
+                                trySend(newUser)
+                            }
+                        }
                     }
             }
         }
@@ -42,37 +67,45 @@ class AuthRepository @Inject constructor(
         return try {
             val credential = GoogleAuthProvider.getCredential(account.idToken, null)
             val result = auth.signInWithCredential(credential).await()
-            val uid = result.user?.uid ?: return Resource.Error("No UID")
-            if (result.additionalUserInfo?.isNewUser == true) {
+            val uid = result.user?.uid ?: return Resource.Error("Sign in failed - no user ID")
+            val isNew = result.additionalUserInfo?.isNewUser == true
+            if (isNew) {
                 createUserWithCoins(
-                    uid, result.user?.displayName ?: "Reader",
-                    result.user?.email ?: "", result.user?.photoUrl?.toString() ?: ""
+                    uid = uid,
+                    name = result.user?.displayName ?: "User",
+                    email = result.user?.email ?: "",
+                    photoUrl = result.user?.photoUrl?.toString() ?: ""
                 )
+            } else {
+                ensureUserDocExists(uid, result.user?.displayName ?: "User",
+                    result.user?.email ?: "", result.user?.photoUrl?.toString() ?: "")
             }
             Resource.Success(fetchUser(uid))
         } catch (e: Exception) {
-            Resource.Error(e.localizedMessage ?: "Google sign-in failed")
+            Resource.Error("Google sign-in failed: ${e.localizedMessage}")
         }
     }
 
     suspend fun signInWithEmail(email: String, password: String): Resource<User> {
         return try {
             val result = auth.signInWithEmailAndPassword(email, password).await()
-            val uid = result.user?.uid ?: return Resource.Error("No UID")
+            val uid = result.user?.uid ?: return Resource.Error("Sign in failed - no user ID")
+            ensureUserDocExists(uid, result.user?.email?.substringBefore("@") ?: "User",
+                result.user?.email ?: "", "")
             Resource.Success(fetchUser(uid))
         } catch (e: Exception) {
-            Resource.Error(e.localizedMessage ?: "Sign-in failed")
+            Resource.Error("Sign-in failed: ${e.localizedMessage}")
         }
     }
 
     suspend fun register(name: String, email: String, password: String): Resource<User> {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
-            val uid = result.user?.uid ?: return Resource.Error("No UID")
+            val uid = result.user?.uid ?: return Resource.Error("Registration failed - no user ID")
             createUserWithCoins(uid, name, email, "")
             Resource.Success(fetchUser(uid))
         } catch (e: Exception) {
-            Resource.Error(e.localizedMessage ?: "Registration failed")
+            Resource.Error("Registration failed: ${e.localizedMessage}")
         }
     }
 
@@ -82,15 +115,22 @@ class AuthRepository @Inject constructor(
         uid: String, name: String, email: String, photoUrl: String
     ) {
         val userRef = db.collection(FirestoreCollections.USERS).document(uid)
-        val txnRef  = db.collection(FirestoreCollections.COIN_TRANSACTIONS).document()
+        val txnRef = db.collection(FirestoreCollections.COIN_TRANSACTIONS).document()
+
         db.batch().apply {
             set(userRef, User(
-                userId = uid, name = name, email = email, photoUrl = photoUrl,
-                role = UserRole.READER, coinBalance = MvpConfig.FREE_COINS_ON_SIGNUP,
+                userId = uid,
+                name = name,
+                email = email,
+                photoUrl = photoUrl,
+                role = UserRole.READER,
+                coinBalance = MvpConfig.FREE_COINS_ON_SIGNUP,
                 createdAt = Timestamp.now()
             ))
             set(txnRef, CoinTransaction(
-                txnId = txnRef.id, userId = uid, type = CoinTxnType.SIGNUP_BONUS,
+                txnId = txnRef.id,
+                userId = uid,
+                type = CoinTxnType.SIGNUP_BONUS,
                 coinsAmount = MvpConfig.FREE_COINS_ON_SIGNUP,
                 note = "Welcome! ${MvpConfig.FREE_COINS_ON_SIGNUP} free coins",
                 createdAt = Timestamp.now()
@@ -98,8 +138,35 @@ class AuthRepository @Inject constructor(
         }.commit().await()
     }
 
+    // Ensures user doc exists for existing Firebase Auth users
+    // who may not have a Firestore document yet
+    private suspend fun ensureUserDocExists(
+        uid: String, name: String, email: String, photoUrl: String
+    ) {
+        val userRef = db.collection(FirestoreCollections.USERS).document(uid)
+        val snap = userRef.get().await()
+        if (!snap.exists()) {
+            createUserWithCoins(uid, name, email, photoUrl)
+        }
+    }
+
     private suspend fun fetchUser(uid: String): User {
-        return db.collection(FirestoreCollections.USERS).document(uid)
-            .get().await().toObject(User::class.java) ?: User(userId = uid)
+        return try {
+            val doc = db.collection(FirestoreCollections.USERS)
+                .document(uid).get().await()
+            doc.toObject(User::class.java) ?: User(
+                userId = uid,
+                name = auth.currentUser?.displayName ?: "User",
+                email = auth.currentUser?.email ?: "",
+                coinBalance = MvpConfig.FREE_COINS_ON_SIGNUP
+            )
+        } catch (e: Exception) {
+            User(
+                userId = uid,
+                name = auth.currentUser?.displayName ?: "User",
+                email = auth.currentUser?.email ?: "",
+                coinBalance = MvpConfig.FREE_COINS_ON_SIGNUP
+            )
+        }
     }
 }
