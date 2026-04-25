@@ -103,9 +103,15 @@ fun LoginScreen(viewModel: AuthViewModel, onSuccess: () -> Unit) {
             else Text(text = if (isRegister) "Create Account" else "Sign In", fontWeight = FontWeight.Medium)
         }
         TextButton(onClick = { isRegister = !isRegister; viewModel.clearError() }) { Text(text = if (isRegister) "Already have an account? Sign in" else "New here? Create account") }
-        HorizontalDivider(Modifier.padding(vertical = 16.dp))
-        OutlinedButton(onClick = { googleLauncher.launch(googleClient.signInIntent) }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) { Text(text = "Continue with Google", fontWeight = FontWeight.Medium) }
-        Spacer(Modifier.height(40.dp))
+        // Google login temporarily hidden — SHA-1 setup pending
+// HorizontalDivider(Modifier.padding(vertical = 16.dp))
+// OutlinedButton(
+//     onClick = { googleLauncher.launch(googleClient.signInIntent) },
+//     modifier = Modifier.fillMaxWidth().height(52.dp),
+//     shape = RoundedCornerShape(14.dp)
+// ) {
+//     Text(text = "Continue with Google", fontWeight = FontWeight.Medium)
+// }
     }
 }
 
