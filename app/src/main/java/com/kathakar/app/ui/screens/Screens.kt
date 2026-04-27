@@ -457,7 +457,7 @@ fun StoryDetailScreen(
 
             items(state.episodes, key = { it.episodeId }) { ep ->
                 val isAuthor   = user.userId == (state.story?.authorId ?: "")
-                val isUnlocked = isAuthor || ep.isFree || state.unlockedIds.contains(ep.episodeId)
+                val isUnlocked = isAuthor || ep.isFree || ep.chapterNumber == 1 || state.unlockedIds.contains(ep.episodeId)
                 EpisodeRow(
                     episode    = ep,
                     isUnlocked = isUnlocked,
