@@ -255,11 +255,25 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit, onReadEpi
                 }
             }
             item {
+                val isAuthor = user.userId == (state.story?.authorId ?: "")
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(12.dp)) {
+                    colors = CardDefaults.cardColors(
+                        if (isAuthor) MaterialTheme.colorScheme.secondaryContainer
+                        else MaterialTheme.colorScheme.primaryContainer),
+                    shape = RoundedCornerShape(12.dp)) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text(text = "Balance: " + user.coinBalance + " coins", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text(text = "Ch.1 free, others cost " + MvpConfig.EPISODE_UNLOCK_COST + " coins", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        if (isAuthor) {
+                            Text(text = "Your story - all chapters free to read",
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        } else {
+                            Text(text = "Balance: " + user.coinBalance + " coins",
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(text = "Ch.1 free, others cost " + MvpConfig.EPISODE_UNLOCK_COST + " coins",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
                     }
                 }
             }
@@ -270,9 +284,20 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit, onReadEpi
             }
             item { Text(text = "Episodes", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) }
             items(state.episodes, key = { it.episodeId }) { ep ->
-                val isUnlocked = ep.isFree || state.unlockedIds.contains(ep.episodeId)
-                EpisodeRow(episode = ep, isUnlocked = isUnlocked, isUnlocking = state.unlockingId == ep.episodeId,
-                    userCoins = user.coinBalance, onTap = { if (isUnlocked) onReadEpisode(ep.episodeId) else vm.unlock(ep, user) })
+                // Author reads all their own episodes for free
+                val isAuthor = user.userId == (state.story?.authorId ?: "")
+                val isUnlocked = isAuthor || ep.isFree || state.unlockedIds.contains(ep.episodeId)
+                EpisodeRow(
+                    episode    = ep,
+                    isUnlocked = isUnlocked,
+                    isUnlocking = state.unlockingId == ep.episodeId,
+                    isAuthor   = isAuthor,
+                    userCoins  = user.coinBalance,
+                    onTap      = {
+                        if (isUnlocked) onReadEpisode(ep.episodeId)
+                        else vm.unlock(ep, user)
+                    }
+                )
             }
         }
     }
@@ -280,7 +305,8 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit, onReadEpi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EpisodeRow(episode: Episode, isUnlocked: Boolean, isUnlocking: Boolean, userCoins: Int, onTap: () -> Unit) {
+private fun EpisodeRow(episode: Episode, isUnlocked: Boolean, isUnlocking: Boolean,
+                       isAuthor: Boolean, userCoins: Int, onTap: () -> Unit) {
     var showDialog by remember { mutableStateOf(false) }
     Card(onClick = { if (isUnlocked) onTap() else showDialog = true },
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), shape = RoundedCornerShape(10.dp)) {
@@ -296,8 +322,15 @@ private fun EpisodeRow(episode: Episode, isUnlocked: Boolean, isUnlocking: Boole
                 Text(text = episode.title, fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(text = episode.wordCount.toString() + " words", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (isUnlocking) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            else if (isUnlocked) {
+            if (isUnlocking) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else if (isAuthor) {
+                // Author badge
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(6.dp)) {
+                    Text(text = "Yours", fontSize = 10.sp, modifier = Modifier.padding(5.dp, 2.dp),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer)
+                }
+            } else if (isUnlocked) {
                 Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 if (episode.isFree) Text(text = "Free", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp))
             } else {
@@ -344,12 +377,14 @@ fun EpisodeReaderScreen(episodeId: String, onBack: () -> Unit, vm: ReaderViewMod
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WriteScreen(user: User, onCreateStory: () -> Unit, onCreateEpisode: (String, Int) -> Unit,
-                onAiClick: () -> Unit, onBack: () -> Unit, vm: WriterViewModel = hiltViewModel()) {
+                onAiClick: () -> Unit, onBack: () -> Unit, onReadStory: (String) -> Unit = {},
+                onLibraryClick: () -> Unit = {}, onProfileClick: () -> Unit = {},
+                vm: WriterViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     var tab by remember { mutableStateOf(0) }
     LaunchedEffect(user.userId) { vm.loadMyStories(user.userId) }
     Scaffold(topBar = { TopAppBar(title = { Text(text = "Write") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) },
-        bottomBar = { KathakarBottomNav(1, onRead = onBack, onWrite = {}, onLibrary = {}, onProfile = {}) }
+        bottomBar = { KathakarBottomNav(1, onRead = onBack, onWrite = {}, onLibrary = onLibraryClick, onProfile = onProfileClick) }
     ) { p ->
         Column(modifier = Modifier.fillMaxSize().padding(p)) {
             TabRow(selectedTabIndex = tab) {
@@ -370,8 +405,26 @@ fun WriteScreen(user: User, onCreateStory: () -> Unit, onCreateEpisode: (String,
                             }
                             Text(text = story.totalEpisodes.toString() + " episodes - " + story.category, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                             Spacer(Modifier.height(10.dp))
-                            OutlinedButton(onClick = { onCreateEpisode(story.storyId, story.totalEpisodes + 1) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
-                                Text(text = "+ Chapter " + (story.totalEpisodes + 1))
+                            // Two action buttons: Read (free for author) + Add Chapter
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = { onReadStory(story.storyId) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(text = "Read")
+                                }
+                                Button(
+                                    onClick = { onCreateEpisode(story.storyId, story.totalEpisodes + 1) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(text = "Ch. " + (story.totalEpisodes + 1))
+                                }
                             }
                         }
                     }
@@ -449,11 +502,13 @@ fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String, o
 // ── Library ───────────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> Unit, vm: LibraryViewModel = hiltViewModel()) {
+fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> Unit,
+                  onWriteClick: () -> Unit = {}, onProfileClick: () -> Unit = {},
+                  vm: LibraryViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     LaunchedEffect(userId) { vm.load(userId) }
     Scaffold(topBar = { TopAppBar(title = { Text(text = "Library") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) },
-        bottomBar = { KathakarBottomNav(2, onRead = onBack, onWrite = {}, onLibrary = {}, onProfile = {}) }
+        bottomBar = { KathakarBottomNav(2, onRead = onBack, onWrite = onWriteClick, onLibrary = {}, onProfile = onProfileClick) }
     ) { p ->
         if (state.isLoading) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
         if (state.entries.isEmpty()) {
@@ -489,13 +544,14 @@ fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> 
 @Composable
 fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onSubscribe: () -> Unit,
                   onBack: () -> Unit, onAdminDashboard: () -> Unit,
+                  onWriteClick: () -> Unit = {}, onLibraryClick: () -> Unit = {},
                   vm: ProfileViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     LaunchedEffect(user.userId) { vm.load(user.userId) }
     Scaffold(topBar = { TopAppBar(title = { Text(text = "Profile") },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
         actions = { TextButton(onClick = onSignOut) { Text(text = "Sign out", color = MaterialTheme.colorScheme.error) } }) },
-        bottomBar = { KathakarBottomNav(3, onRead = onBack, onWrite = {}, onLibrary = {}, onProfile = {}) }
+        bottomBar = { KathakarBottomNav(3, onRead = onBack, onWrite = onWriteClick, onLibrary = onLibraryClick, onProfile = {}) }
     ) { p ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
