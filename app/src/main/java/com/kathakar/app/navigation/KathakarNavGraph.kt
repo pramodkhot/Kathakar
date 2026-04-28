@@ -13,6 +13,7 @@ sealed class Screen(val route: String) {
     object Library        : Screen("library")
     object Profile        : Screen("profile")
     object Write          : Screen("write")
+    object Poems          : Screen("poems")          // ← NEW 5th tab
     object CreateStory    : Screen("write/new")
     object AdminDashboard : Screen("admin/dashboard")
     object BuyCoins       : Screen("stub/coins")
@@ -30,6 +31,9 @@ sealed class Screen(val route: String) {
     }
     object EditEpisode : Screen("edit/episode/{episodeId}/{storyId}") {
         fun go(episodeId: String, storyId: String) = "edit/episode/$episodeId/$storyId"
+    }
+    object PoemDetail : Screen("poem/{poemId}/{authorId}") {
+        fun go(poemId: String, authorId: String) = "poem/$poemId/$authorId"
     }
 }
 
@@ -63,7 +67,8 @@ fun KathakarNavGraph(navController: NavHostController) {
                 onStoryClick   = { navController.navigate(Screen.StoryDetail.go(it)) },
                 onWriteClick   = { navController.switchTab(Screen.Write.route) },
                 onLibraryClick = { navController.switchTab(Screen.Library.route) },
-                onProfileClick = { navController.switchTab(Screen.Profile.route) })
+                onProfileClick = { navController.switchTab(Screen.Profile.route) },
+                onPoemsClick   = { navController.switchTab(Screen.Poems.route) })
         }
 
         composable(Screen.StoryDetail.route,
@@ -87,14 +92,11 @@ fun KathakarNavGraph(navController: NavHostController) {
             val authorId  = back.arguments?.getString("authorId")  ?: return@composable
             val storyId   = back.arguments?.getString("storyId")   ?: return@composable
             val user      = auth.user ?: return@composable
-            EpisodeReaderScreen(
-                episodeId      = episodeId,
-                storyId        = storyId,
-                authorId       = authorId,
-                currentUserId  = user.userId,
-                onBack         = { navController.popBackStack() },
-                onEdit         = { navController.navigate(Screen.EditEpisode.go(episodeId, storyId)) },
-                onDeleted      = { navController.popBackStack() })
+            EpisodeReaderScreen(episodeId = episodeId, storyId = storyId,
+                authorId = authorId, currentUserId = user.userId,
+                onBack    = { navController.popBackStack() },
+                onEdit    = { navController.navigate(Screen.EditEpisode.go(episodeId, storyId)) },
+                onDeleted = { navController.popBackStack() })
         }
 
         composable(Screen.EditEpisode.route, listOf(
@@ -117,7 +119,8 @@ fun KathakarNavGraph(navController: NavHostController) {
                 onBack          = { navController.switchTab(Screen.Home.route) },
                 onReadStory     = { navController.navigate(Screen.StoryDetail.go(it)) },
                 onLibraryClick  = { navController.switchTab(Screen.Library.route) },
-                onProfileClick  = { navController.switchTab(Screen.Profile.route) })
+                onProfileClick  = { navController.switchTab(Screen.Profile.route) },
+                onPoemsClick    = { navController.switchTab(Screen.Poems.route) })
         }
 
         composable(Screen.CreateStory.route) {
@@ -127,8 +130,7 @@ fun KathakarNavGraph(navController: NavHostController) {
                     navController.navigate(Screen.CreateEpisode.go(sid, 1)) {
                         popUpTo(Screen.CreateStory.route) { inclusive = true }
                     }
-                },
-                onBack = { navController.popBackStack() })
+                }, onBack = { navController.popBackStack() })
         }
 
         composable(Screen.CreateEpisode.route, listOf(
@@ -143,12 +145,38 @@ fun KathakarNavGraph(navController: NavHostController) {
                 onBack = { navController.popBackStack() })
         }
 
+        // ── POEMS TAB ──────────────────────────────────────────────────────────
+        composable(Screen.Poems.route) {
+            val user = auth.user ?: return@composable
+            PoemsScreen(user = user,
+                onPoemClick    = { poemId, authorId ->
+                    navController.navigate(Screen.PoemDetail.go(poemId, authorId))
+                },
+                onReadClick    = { navController.switchTab(Screen.Home.route) },
+                onWriteClick   = { navController.switchTab(Screen.Write.route) },
+                onLibraryClick = { navController.switchTab(Screen.Library.route) },
+                onProfileClick = { navController.switchTab(Screen.Profile.route) })
+        }
+
+        composable(Screen.PoemDetail.route, listOf(
+            navArgument("poemId")   { type = NavType.StringType },
+            navArgument("authorId") { type = NavType.StringType }
+        )) { back ->
+            val poemId   = back.arguments?.getString("poemId")   ?: return@composable
+            val authorId = back.arguments?.getString("authorId") ?: return@composable
+            val user     = auth.user ?: return@composable
+            PoemDetailScreen(poemId = poemId, authorId = authorId, user = user,
+                onBack = { navController.popBackStack() },
+                onBuyCoins = { navController.navigate(Screen.BuyCoins.route) })
+        }
+
         composable(Screen.Library.route) {
             val user = auth.user ?: return@composable
             LibraryScreen(userId = user.userId,
                 onStoryClick   = { navController.navigate(Screen.StoryDetail.go(it)) },
                 onBack         = { navController.switchTab(Screen.Home.route) },
                 onWriteClick   = { navController.switchTab(Screen.Write.route) },
+                onPoemsClick   = { navController.switchTab(Screen.Poems.route) },
                 onProfileClick = { navController.switchTab(Screen.Profile.route) })
         }
 
@@ -162,13 +190,13 @@ fun KathakarNavGraph(navController: NavHostController) {
                 onAdminDashboard = { navController.navigate(Screen.AdminDashboard.route) },
                 onBack           = { navController.switchTab(Screen.Home.route) },
                 onWriteClick     = { navController.switchTab(Screen.Write.route) },
+                onPoemsClick     = { navController.switchTab(Screen.Poems.route) },
                 onLibraryClick   = { navController.switchTab(Screen.Library.route) })
         }
 
         composable(Screen.AdminDashboard.route) {
             AdminDashboardScreen(onBack = { navController.popBackStack() })
         }
-
         composable(Screen.BuyCoins.route) {
             ComingSoonScreen("Buy Coins", "Payments coming soon!", onBack = { navController.popBackStack() })
         }
