@@ -443,27 +443,145 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
     }
 }
 
-// ── Create Episode ────────────────────────────────────────────────────────────
+// ── Create Episode ─────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String, onDone: () -> Unit, onBack: () -> Unit, vm: WriterViewModel = hiltViewModel()) {
-    val state by vm.state.collectAsState()
+fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String,
+                        onDone: () -> Unit, onBack: () -> Unit,
+                        vm: WriterViewModel = hiltViewModel()) {
+    val state   by vm.state.collectAsState()
+    val context  = LocalContext.current
+    var fileError   by remember { mutableStateOf<String?>(null) }
+    var importedFrom by remember { mutableStateOf<String?>(null) }
+
+    // File picker launcher — accepts .docx and .txt
+    val fileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val result = com.kathakar.app.util.FileUtils.readFile(context, uri)
+            if (result.isSuccess) {
+                vm.onEpContentChange(result.text)
+                importedFrom = result.fileName
+                fileError    = null
+            } else {
+                fileError = result.error
+            }
+        }
+    }
+
     LaunchedEffect(state.savedEpisodeId) { if (state.savedEpisodeId != null) { onDone(); vm.resetSaved() } }
-    Scaffold(topBar = { TopAppBar(title = { Text(text = "Chapter " + chapterNumber) },
+
+    Scaffold(topBar = { TopAppBar(
+        title = { Text(text = "Chapter " + chapterNumber) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
-        actions = { Text(text = state.wordCount.toString() + " words", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) }) }
+        actions = { Text(text = state.wordCount.toString() + " words", fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) }) }
     ) { p ->
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(value = state.epTitle, onValueChange = vm::onEpTitleChange, label = { Text(text = "Chapter title") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
-            if (chapterNumber == 1) { Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(10.dp)) {
-                Text(text = "Chapter 1 is always free for readers", modifier = Modifier.padding(10.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSecondaryContainer) } }
-            OutlinedTextField(value = state.epContent, onValueChange = vm::onEpContentChange, label = { Text(text = "Write your story here...") },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 320.dp), shape = RoundedCornerShape(12.dp), minLines = 12)
-            state.error?.let { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)) { Text(text = it, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer) } }
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            // Chapter title
+            OutlinedTextField(value = state.epTitle, onValueChange = vm::onEpTitleChange,
+                label = { Text(text = "Chapter title") }, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp), singleLine = true)
+
+            // Chapter 1 free badge
+            if (chapterNumber == 1) {
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(10.dp)) {
+                    Text(text = "Chapter 1 is always free for readers",
+                        modifier = Modifier.padding(10.dp), fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer) }
+            }
+
+            // ── FILE UPLOAD SECTION ──────────────────────────────────────────
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant)) {
+                Column(modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text(text = "Import from file", fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    Text(text = "Upload a .docx or .txt file to auto-fill the chapter content. Max 2 MB · 10,000 words.",
+                        fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp)
+
+                    // Imported file badge
+                    importedFrom?.let { fileName ->
+                        Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(8.dp)) {
+                            Row(modifier = Modifier.padding(8.dp, 5.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(6.dp))
+                                Text(text = fileName, fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f))
+                                TextButton(onClick = {
+                                    vm.onEpContentChange(""); importedFrom = null
+                                }, modifier = Modifier.height(24.dp),
+                                    contentPadding = PaddingValues(horizontal = 6.dp)) {
+                                    Text(text = "Clear", fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+
+                    // File error
+                    fileError?.let { err ->
+                        Surface(color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(8.dp)) {
+                            Text(text = err, modifier = Modifier.padding(10.dp), fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onErrorContainer, lineHeight = 18.sp)
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = { fileLauncher.launch(
+                            arrayOf("text/plain",
+                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) },
+                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(text = if (importedFrom != null) "Replace file" else "Choose file (.docx / .txt)")
+                    }
+                }
+            }
+            // ── END FILE UPLOAD ───────────────────────────────────────────────
+
+            // Divider between upload and manual typing
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                HorizontalDivider(modifier = Modifier.weight(1f))
+                Text(text = "  or type manually  ", fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                HorizontalDivider(modifier = Modifier.weight(1f))
+            }
+
+            // Content editor
+            OutlinedTextField(value = state.epContent, onValueChange = vm::onEpContentChange,
+                label = { Text(text = "Write your story here...") },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 280.dp),
+                shape = RoundedCornerShape(12.dp), minLines = 10)
+
+            state.error?.let { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)) {
+                Text(text = it, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer) } }
+
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = { vm.saveEpisode(storyId, authorId, chapterNumber, false) }, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp), enabled = !state.isSaving) { Text(text = "Save Draft") }
-                Button(onClick = { vm.saveEpisode(storyId, authorId, chapterNumber, true) }, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp), enabled = !state.isSaving && state.epContent.isNotBlank()) {
-                    if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                OutlinedButton(onClick = { vm.saveEpisode(storyId, authorId, chapterNumber, false) },
+                    modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp),
+                    enabled = !state.isSaving) { Text(text = "Save Draft") }
+                Button(onClick = { vm.saveEpisode(storyId, authorId, chapterNumber, true) },
+                    modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp),
+                    enabled = !state.isSaving && state.epContent.isNotBlank()) {
+                    if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                     else Text(text = "Publish", fontWeight = FontWeight.Medium) }
             }
             Spacer(Modifier.height(24.dp))
@@ -605,25 +723,52 @@ fun PoemCard(poem: Poem, currentUserId: String, onClick: () -> Unit,
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WritePoemSheet(user: User, vm: PoemsViewModel) {
-    val state    by vm.state.collectAsState()
-    val isEditing = state.editingPoem != null
+    val state     by vm.state.collectAsState()
+    val context    = LocalContext.current
+    val isEditing  = state.editingPoem != null
+    var fileError    by remember { mutableStateOf<String?>(null) }
+    var importedFrom by remember { mutableStateOf<String?>(null) }
+
+    // File picker for poem — .txt only (poems are short, no need for .docx)
+    val fileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val result = com.kathakar.app.util.FileUtils.readFile(context, uri)
+            if (result.isSuccess) {
+                vm.onPoemContentChange(result.text)
+                importedFrom = result.fileName
+                fileError    = null
+            } else {
+                fileError = result.error
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = { vm.closeWriteSheet() },
-        title = { Text(text = if (isEditing) "Edit poem" else "Write a poem", fontWeight = FontWeight.Medium) },
+        title = { Text(text = if (isEditing) "Edit poem" else "Write a poem",
+            fontWeight = FontWeight.Medium) },
         text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+                // Title
                 OutlinedTextField(value = state.poemTitle, onValueChange = vm::onPoemTitleChange,
-                    label = { Text(text = "Title") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
+                    label = { Text(text = "Title") }, modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp), singleLine = true)
 
                 // Format selector
                 var formatExp by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(expanded = formatExp, onExpandedChange = { formatExp = it }) {
-                    OutlinedTextField(value = state.poemFormat, onValueChange = {}, readOnly = true, label = { Text(text = "Format") },
+                    OutlinedTextField(value = state.poemFormat, onValueChange = {}, readOnly = true,
+                        label = { Text(text = "Format") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(formatExp) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(), shape = RoundedCornerShape(12.dp))
                     ExposedDropdownMenu(expanded = formatExp, onDismissRequest = { formatExp = false }) {
-                        vm.formats.forEach { fmt -> DropdownMenuItem(text = { Text(text = fmt) }, onClick = { vm.onPoemFormatChange(fmt); formatExp = false }) }
+                        vm.formats.forEach { fmt ->
+                            DropdownMenuItem(text = { Text(text = fmt) },
+                                onClick = { vm.onPoemFormatChange(fmt); formatExp = false }) }
                     }
                 }
 
@@ -631,42 +776,119 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     var langExp by remember { mutableStateOf(false) }
                     val langName = KathakarMeta.LANGUAGES.find { it.first == state.poemLanguage }?.second ?: "English"
-                    ExposedDropdownMenuBox(expanded = langExp, onExpandedChange = { langExp = it }, modifier = Modifier.weight(1f)) {
-                        OutlinedTextField(value = langName, onValueChange = {}, readOnly = true, label = { Text(text = "Language") },
+                    ExposedDropdownMenuBox(expanded = langExp, onExpandedChange = { langExp = it },
+                        modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(value = langName, onValueChange = {}, readOnly = true,
+                            label = { Text(text = "Language") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(langExp) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(), shape = RoundedCornerShape(12.dp))
                         ExposedDropdownMenu(expanded = langExp, onDismissRequest = { langExp = false }) {
-                            KathakarMeta.LANGUAGES.forEach { (code, name) -> DropdownMenuItem(text = { Text(text = name) }, onClick = { vm.onPoemLanguageChange(code); langExp = false }) }
+                            KathakarMeta.LANGUAGES.forEach { (code, name) ->
+                                DropdownMenuItem(text = { Text(text = name) },
+                                    onClick = { vm.onPoemLanguageChange(code); langExp = false }) }
                         }
                     }
                     var moodExp by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(expanded = moodExp, onExpandedChange = { moodExp = it }, modifier = Modifier.weight(1f)) {
-                        OutlinedTextField(value = state.poemMood, onValueChange = {}, readOnly = true, label = { Text(text = "Mood") },
+                    ExposedDropdownMenuBox(expanded = moodExp, onExpandedChange = { moodExp = it },
+                        modifier = Modifier.weight(1f)) {
+                        OutlinedTextField(value = state.poemMood, onValueChange = {}, readOnly = true,
+                            label = { Text(text = "Mood") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(moodExp) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(), shape = RoundedCornerShape(12.dp))
                         ExposedDropdownMenu(expanded = moodExp, onDismissRequest = { moodExp = false }) {
-                            vm.moods.forEach { mood -> DropdownMenuItem(text = { Text(text = mood) }, onClick = { vm.onPoemMoodChange(mood); moodExp = false }) }
+                            vm.moods.forEach { mood ->
+                                DropdownMenuItem(text = { Text(text = mood) },
+                                    onClick = { vm.onPoemMoodChange(mood); moodExp = false }) }
                         }
                     }
+                }
+
+                // ── FILE UPLOAD SECTION FOR POEMS ────────────────────────────
+                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(text = "Import poem from file",
+                            fontWeight = FontWeight.Medium, fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface)
+                        Text(text = "Upload a .txt or .docx file. Poem will auto-fill below.",
+                            fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                        // Imported file badge
+                        importedFrom?.let { fileName ->
+                            Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(6.dp)) {
+                                Row(modifier = Modifier.padding(7.dp, 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.CheckCircle, null,
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(text = fileName, fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f))
+                                    TextButton(onClick = {
+                                        vm.onPoemContentChange(""); importedFrom = null
+                                    }, modifier = Modifier.height(22.dp),
+                                        contentPadding = PaddingValues(horizontal = 4.dp)) {
+                                        Text(text = "Clear", fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+
+                        // File error
+                        fileError?.let { err ->
+                            Text(text = err, fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.error, lineHeight = 16.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = { fileLauncher.launch(
+                                arrayOf("text/plain",
+                                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) },
+                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(vertical = 6.dp)) {
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text(text = if (importedFrom != null) "Replace file"
+                                        else "Choose .txt / .docx",
+                                fontSize = 12.sp)
+                        }
+                    }
+                }
+                // ── END FILE UPLOAD ───────────────────────────────────────────
+
+                // Divider
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                    Text(text = "  or type below  ", fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    HorizontalDivider(modifier = Modifier.weight(1f))
                 }
 
                 // Poem content editor
                 OutlinedTextField(value = state.poemContent, onValueChange = vm::onPoemContentChange,
                     label = { Text(text = "Your poem...") },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp),
-                    shape = RoundedCornerShape(12.dp), minLines = 6,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
+                    shape = RoundedCornerShape(12.dp), minLines = 5,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(lineHeight = 30.sp))
 
-                Text(text = state.wordCount.toString() + " words", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = state.wordCount.toString() + " words",
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                 state.error?.let { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)) {
-                    Text(text = it, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer, fontSize = 13.sp) } }
+                    Text(text = it, modifier = Modifier.padding(12.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer, fontSize = 13.sp) } }
             }
         },
         confirmButton = {
             Button(onClick = { vm.savePoem(user.userId, user.name) },
                 enabled = !state.isSaving && state.poemTitle.isNotBlank() && state.poemContent.isNotBlank()) {
-                if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                 else Text(text = if (isEditing) "Update" else "Publish")
             }
         },
