@@ -250,9 +250,14 @@ fun SettingsScreen(onBack: () -> Unit) {
                 Button(onClick = {
                     showLangDialog  = false
                     currentLangCode = pendingLangCode
+                    // Set the locale first, then recreate after a short delay
+                    // so AppCompatDelegate has time to apply the change
                     applyLanguage(pendingLangCode)
-                    // Recreate activity to apply new language
-                    (context as? Activity)?.recreate()
+                    (context as? Activity)?.let { activity ->
+                        activity.window.decorView.post {
+                            activity.recreate()
+                        }
+                    }
                 }) {
                     Text(text = stringResource(R.string.apply))
                 }
