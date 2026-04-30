@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-        Parent changed from android:Theme.Material.Light.NoActionBar
-        to Theme.MaterialComponents.DayNight.NoActionBar
-
-        This is required because MainActivity now extends AppCompatActivity
-        (needed for per-app language switching).
-        AppCompatActivity crashes if the theme parent is not AppCompat-based.
+        Uses Theme.AppCompat.DayNight.NoActionBar as parent.
+        This works because:
+        - androidx.appcompat:appcompat is already in build.gradle.kts
+        - AppCompatActivity requires an AppCompat-based theme
+        - Material3 Compose UI draws its own surface — no XML theme needed for UI
+        - This theme purely satisfies AppCompatActivity's requirement
     -->
-    <style name="Theme.Kathakar" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+    <style name="Theme.Kathakar" parent="Theme.AppCompat.DayNight.NoActionBar" />
 </resources>
