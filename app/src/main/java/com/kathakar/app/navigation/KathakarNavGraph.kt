@@ -19,6 +19,7 @@ sealed class Screen(val route: String) {
     object BuyCoins       : Screen("stub/coins")
     object Subscribe      : Screen("stub/subscribe")
     object AiWrite        : Screen("stub/ai")
+    object Settings       : Screen("settings")
     object CreateEpisode  : Screen("write/episode/{storyId}/{chNum}") {
         fun go(storyId: String, ch: Int) = "write/episode/$storyId/$ch"
     }
@@ -68,7 +69,8 @@ fun KathakarNavGraph(navController: NavHostController) {
                 onWriteClick   = { navController.switchTab(Screen.Write.route) },
                 onLibraryClick = { navController.switchTab(Screen.Library.route) },
                 onProfileClick = { navController.switchTab(Screen.Profile.route) },
-                onPoemsClick   = { navController.switchTab(Screen.Poems.route) })
+                onPoemsClick   = { navController.switchTab(Screen.Poems.route) },
+                onSettingsClick = { navController.navigate(Screen.Settings.route) })
         }
 
         composable(Screen.StoryDetail.route,
@@ -205,6 +207,9 @@ fun KathakarNavGraph(navController: NavHostController) {
         }
         composable(Screen.AiWrite.route) {
             ComingSoonScreen("AI Writing Assistant", "AI features coming soon.", onBack = { navController.popBackStack() })
+        }
+        composable(Screen.Settings.route) {
+            SettingsScreen(onBack = { navController.popBackStack() })
         }
     }
 }
