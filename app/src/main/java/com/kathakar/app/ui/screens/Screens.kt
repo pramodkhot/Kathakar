@@ -130,13 +130,20 @@ fun LoginScreen(viewModel: AuthViewModel, onSuccess: () -> Unit) {
 @Composable
 fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> Unit,
                onLibraryClick: () -> Unit, onProfileClick: () -> Unit, onPoemsClick: () -> Unit,
+               onSettingsClick: () -> Unit = {},
                vm: HomeViewModel = hiltViewModel()) {
     val state     by vm.state.collectAsState()
     val listState  = rememberLazyListState()
     Scaffold(
         topBar = { TopAppBar(
-            title = { Text(text = "KathaKar", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
+            title = { Text(text = stringResource(R.string.app_name), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
             actions = {
+                // ⚙️ Settings gear icon
+                IconButton(onClick = onSettingsClick) {
+                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title),
+                        tint = MaterialTheme.colorScheme.onSurface)
+                }
+                // Profile avatar
                 IconButton(onClick = onProfileClick) {
                     Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(50)) {
                         Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
