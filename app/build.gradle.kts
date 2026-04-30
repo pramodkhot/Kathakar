@@ -11,12 +11,11 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.kathakar.app"
-        minSdk        = 24
-        targetSdk     = 34
-        versionCode   = 1
-        versionName   = "1.0.0"
-        // Required for Apache POI on older Android versions
+        applicationId   = "com.kathakar.app"
+        minSdk          = 24
+        targetSdk       = 34
+        versionCode     = 1
+        versionName     = "1.0.0"
         multiDexEnabled = true
     }
 
@@ -50,21 +49,15 @@ android {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
 
-    // ── Packaging rules ────────────────────────────────────────────────────────
-    // Original rule kept + Apache POI META-INF conflicts resolved
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/DEPENDENCIES"
             excludes += "/META-INF/LICENSE"
             excludes += "/META-INF/LICENSE.txt"
-            excludes += "/META-INF/license.txt"
             excludes += "/META-INF/NOTICE"
             excludes += "/META-INF/NOTICE.txt"
-            excludes += "/META-INF/notice.txt"
             excludes += "/META-INF/*.kotlin_module"
-            excludes += "/META-INF/ASL2.0"
-            excludes += "/META-INF/INDEX.LIST"
         }
     }
 }
@@ -104,22 +97,9 @@ dependencies {
     // ── Image loading ──────────────────────────────────────────────────────────
     implementation("io.coil-kt:coil-compose:2.6.0")
 
-    // ── Apache POI — reads .docx (Word) files ──────────────────────────────────
-    // Core POI for OOXML (.docx) support
-    implementation("org.apache.poi:poi:5.2.5") {
-        exclude(group = "commons-logging", module = "commons-logging")
-    }
-    implementation("org.apache.poi:poi-ooxml:5.2.5") {
-        exclude(group = "org.apache.xmlbeans",  module = "xmlbeans")
-        exclude(group = "com.github.virtuald",   module = "curvesapi")
-        exclude(group = "org.apache.commons",    module = "commons-compress")
-        exclude(group = "commons-logging",       module = "commons-logging")
-    }
-    // POI dependencies — explicitly pinned to avoid version conflicts
-    implementation("org.apache.xmlbeans:xmlbeans:5.2.0")
-    implementation("org.apache.commons:commons-compress:1.26.0")
-    implementation("commons-io:commons-io:2.16.1")
-    implementation("org.apache.commons:commons-collections4:4.4")
+    // NOTE: No Apache POI needed!
+    // .docx files are read using Android's built-in ZipInputStream + XmlPullParser.
+    // This approach works on all Android versions (API 21+) with zero extra dependencies.
 
     // ── Debug only ─────────────────────────────────────────────────────────────
     debugImplementation("androidx.compose.ui:ui-tooling")
