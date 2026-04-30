@@ -42,15 +42,15 @@ fun KathakarBottomNav(activeTab: Int, onRead: () -> Unit, onWrite: () -> Unit,
                       onPoems: () -> Unit, onLibrary: () -> Unit, onProfile: () -> Unit) {
     NavigationBar {
         NavigationBarItem(selected = activeTab == 0, onClick = onRead,
-            icon = { Icon(Icons.Default.Home, null) }, label = { Text(text = "Read") })
+            icon = { Icon(Icons.Default.Home, null) }, label = { Text(text = stringResource(R.string.nav_read)) })
         NavigationBarItem(selected = activeTab == 1, onClick = onWrite,
-            icon = { Icon(Icons.Default.Edit, null) }, label = { Text(text = "Write") })
+            icon = { Icon(Icons.Default.Edit, null) }, label = { Text(text = stringResource(R.string.nav_write)) })
         NavigationBarItem(selected = activeTab == 2, onClick = onPoems,
-            icon = { Icon(Icons.Default.Star, null) }, label = { Text(text = "Poems") })
+            icon = { Icon(Icons.Default.Star, null) }, label = { Text(text = stringResource(R.string.nav_poems)) })
         NavigationBarItem(selected = activeTab == 3, onClick = onLibrary,
-            icon = { Icon(Icons.Default.Favorite, null) }, label = { Text(text = "Library") })
+            icon = { Icon(Icons.Default.Favorite, null) }, label = { Text(text = stringResource(R.string.nav_library)) })
         NavigationBarItem(selected = activeTab == 4, onClick = onProfile,
-            icon = { Icon(Icons.Default.Person, null) }, label = { Text(text = "Profile") })
+            icon = { Icon(Icons.Default.Person, null) }, label = { Text(text = stringResource(R.string.nav_profile)) })
     }
 }
 
@@ -67,7 +67,7 @@ fun ComingSoonScreen(title: String, reason: String, onBack: () -> Unit) {
                 Spacer(Modifier.height(10.dp))
                 Text(text = reason, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(24.dp))
-                OutlinedButton(onClick = onBack) { Text(text = "Go back") }
+                OutlinedButton(onClick = onBack) { Text(text = stringResource(R.string.go_back)) }
             }
         }
     }
@@ -90,18 +90,18 @@ fun LoginScreen(viewModel: AuthViewModel, onSuccess: () -> Unit) {
     var name by remember { mutableStateOf("") };  var isRegister by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text(text = "KathaKar", fontSize = 44.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        Text(text = "Stories & Poems in every language", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = stringResource(R.string.app_name), fontSize = 44.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text(text = stringResource(R.string.app_tagline), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(36.dp))
         AnimatedVisibility(isRegister) {
-            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(text = "Full name") },
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(text = stringResource(R.string.full_name)) },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp), shape = RoundedCornerShape(14.dp), singleLine = true)
         }
-        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text(text = "Email") },
+        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text(text = stringResource(R.string.email)) },
             modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             shape = RoundedCornerShape(14.dp), singleLine = true)
         Spacer(Modifier.height(10.dp))
-        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text(text = "Password") },
+        OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text(text = stringResource(R.string.password)) },
             modifier = Modifier.fillMaxWidth(), visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), shape = RoundedCornerShape(14.dp), singleLine = true)
         AnimatedVisibility(state.error != null) {
@@ -110,7 +110,7 @@ fun LoginScreen(viewModel: AuthViewModel, onSuccess: () -> Unit) {
         }
         AnimatedVisibility(isRegister) {
             Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                Text(text = "You will get " + MvpConfig.FREE_COINS_ON_SIGNUP + " free coins on signup!",
+                Text(text = stringResource(R.string.free_coins_signup, MvpConfig.FREE_COINS_ON_SIGNUP),
                     modifier = Modifier.padding(12.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSecondaryContainer) }
         }
         Spacer(Modifier.height(18.dp))
@@ -118,10 +118,10 @@ fun LoginScreen(viewModel: AuthViewModel, onSuccess: () -> Unit) {
             if (isRegister) viewModel.register(name, email, password) else viewModel.signInWithEmail(email, password) },
             modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), enabled = !state.isLoading) {
             if (state.isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-            else Text(text = if (isRegister) "Create Account" else "Sign In", fontWeight = FontWeight.Medium)
+            else Text(text = if (isRegister) stringResource(R.string.create_account) else stringResource(R.string.sign_in), fontWeight = FontWeight.Medium)
         }
         TextButton(onClick = { isRegister = !isRegister; viewModel.clearError() }) {
-            Text(text = if (isRegister) "Already have an account? Sign in" else "New here? Create account") }
+            Text(text = if (isRegister) stringResource(R.string.already_have_account) else stringResource(R.string.new_here)) }
         Spacer(Modifier.height(40.dp))
     }
 }
@@ -157,14 +157,14 @@ fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> U
     ) { padding ->
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = 16.dp)) {
             item { OutlinedTextField(value = state.searchQuery, onValueChange = vm::onSearch,
-                placeholder = { Text(text = "Search stories, authors...") }, leadingIcon = { Icon(Icons.Default.Search, null) },
+                placeholder = { Text(text = stringResource(R.string.search_stories)) }, leadingIcon = { Icon(Icons.Default.Search, null) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), singleLine = true, shape = RoundedCornerShape(24.dp)) }
             item { LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { FilterChip(selected = state.selectedCategory == null, onClick = { vm.onCategory(null) }, label = { Text(text = "All") }) }
+                item { FilterChip(selected = state.selectedCategory == null, onClick = { vm.onCategory(null) }, label = { Text(text = stringResource(R.string.filter_all)) }) }
                 items(vm.categories) { cat -> FilterChip(selected = state.selectedCategory == cat, onClick = { vm.onCategory(cat) }, label = { Text(text = cat) }) }
             } }
             item { LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { FilterChip(selected = state.selectedLanguage == null, onClick = { vm.onLanguage(null) }, label = { Text(text = "All Languages") }) }
+                item { FilterChip(selected = state.selectedLanguage == null, onClick = { vm.onLanguage(null) }, label = { Text(text = stringResource(R.string.filter_all_languages)) }) }
                 items(vm.languages) { (code, name) -> FilterChip(selected = state.selectedLanguage == code, onClick = { vm.onLanguage(code) }, label = { Text(text = name) }) }
             } }
             if (state.isLoading) {
@@ -172,16 +172,16 @@ fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> U
             } else if (state.stories.isEmpty() && state.error == null) {
                 item { Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "No stories yet", style = MaterialTheme.typography.titleMedium)
-                        Text(text = "Be the first to write a story!", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                        Text(text = stringResource(R.string.no_stories_yet), style = MaterialTheme.typography.titleMedium)
+                        Text(text = stringResource(R.string.be_first_to_write), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                         Spacer(Modifier.height(12.dp))
-                        OutlinedButton(onClick = onWriteClick) { Text(text = "Write a story") }
+                        OutlinedButton(onClick = onWriteClick) { Text(text = stringResource(R.string.write_a_story)) }
                     } } }
             } else {
                 state.error?.let { err -> item { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = err, color = MaterialTheme.colorScheme.onErrorContainer, fontSize = 13.sp)
-                        TextButton(onClick = { vm.refresh() }) { Text(text = "Retry") } } } } }
+                        TextButton(onClick = { vm.refresh() }) { Text(text = stringResource(R.string.retry)) } } } } }
                 items(state.stories, key = { it.storyId }) { story ->
                     StoryCard(story = story, onClick = { onStoryClick(story.storyId) }, modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)) }
                 if (state.isLoadingMore) { item { Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(modifier = Modifier.size(28.dp)) } } }
@@ -236,7 +236,7 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit,
                     if (state.story?.authorId != user.userId) {
                         OutlinedButton(onClick = { state.story?.authorId?.let { followVm.toggle(user.userId, it) } },
                             shape = RoundedCornerShape(20.dp), enabled = !followState.isLoading, modifier = Modifier.height(32.dp)) {
-                            Text(text = if (followState.isFollowing) "Following" else "Follow", fontSize = 11.sp) } }
+                            Text(text = if (followState.isFollowing) stringResource(R.string.following) else stringResource(R.string.follow), fontSize = 11.sp) } }
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(text = state.story?.description ?: "", fontSize = 14.sp, lineHeight = 22.sp)
@@ -247,14 +247,14 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit,
                     colors = CardDefaults.cardColors(if (isAuthor) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer),
                     shape = RoundedCornerShape(12.dp)) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        if (isAuthor) Text(text = "Your story - all chapters free to read", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                        else { Text(text = "Ch.1 free — others cost " + MvpConfig.EPISODE_UNLOCK_COST + " coins", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Text(text = "Balance: " + user.coinBalance + " coins", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer) }
+                        if (isAuthor) Text(text = stringResource(R.string.your_story_free), fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        else { Text(text = stringResource(R.string.ch1_free_info, MvpConfig.EPISODE_UNLOCK_COST), fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(text = stringResource(R.string.balance_coins, user.coinBalance), fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer) }
                     }
                 }
             }
             state.error?.let { err -> item { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text(text = err, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer) } } }
-            item { Text(text = "Episodes", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) }
+            item { Text(text = stringResource(R.string.episodes_heading), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) }
             items(state.episodes, key = { it.episodeId }) { ep ->
                 val isAuthor   = user.userId == (state.story?.authorId ?: "")
                 val isUnlocked = isAuthor || ep.isFree || ep.chapterNumber == 1 || state.unlockedIds.contains(ep.episodeId)
@@ -279,21 +279,21 @@ private fun EpisodeRow(episode: Episode, isUnlocked: Boolean, isUnlocking: Boole
                 Text(text = episode.wordCount.toString() + " words", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             when {
                 isUnlocking -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                isAuthor    -> Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(6.dp)) { Text(text = "Yours", fontSize = 10.sp, modifier = Modifier.padding(5.dp, 2.dp), color = MaterialTheme.colorScheme.onSecondaryContainer) }
+                isAuthor    -> Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(6.dp)) { Text(text = stringResource(R.string.yours_label), fontSize = 10.sp, modifier = Modifier.padding(5.dp, 2.dp), color = MaterialTheme.colorScheme.onSecondaryContainer) }
                 isUnlocked  -> { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                    if (episode.isFree || episode.chapterNumber == 1) Text(text = "Free", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp)) }
+                    if (episode.isFree || episode.chapterNumber == 1) Text(text = stringResource(R.string.free_label), fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 4.dp)) }
                 else -> { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                     Text(text = episode.unlockCostCoins.toString() + " coins", fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp)) }
             }
         }
     }
     if (showDialog) {
-        AlertDialog(onDismissRequest = { showDialog = false }, title = { Text(text = "Unlock episode?") },
+        AlertDialog(onDismissRequest = { showDialog = false }, title = { Text(text = stringResource(R.string.unlock_episode)) },
             text = { Column { Text(text = episode.title + " costs " + episode.unlockCostCoins + " coins.")
-                Text(text = "Your balance: " + userCoins + " coins", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
-                if (userCoins < episode.unlockCostCoins) Text(text = "Not enough coins!", color = MaterialTheme.colorScheme.error, fontSize = 13.sp) } },
-            confirmButton = { Button(onClick = { showDialog = false; if (userCoins >= episode.unlockCostCoins) onTap() }, enabled = userCoins >= episode.unlockCostCoins) { Text(text = "Unlock") } },
-            dismissButton = { TextButton(onClick = { showDialog = false }) { Text(text = "Cancel") } })
+                Text(text = stringResource(R.string.your_balance, userCoins), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                if (userCoins < episode.unlockCostCoins) Text(text = stringResource(R.string.not_enough_coins), color = MaterialTheme.colorScheme.error, fontSize = 13.sp) } },
+            confirmButton = { Button(onClick = { showDialog = false; if (userCoins >= episode.unlockCostCoins) onTap() }, enabled = userCoins >= episode.unlockCostCoins) { Text(text = stringResource(R.string.unlock)) } },
+            dismissButton = { TextButton(onClick = { showDialog = false }) { Text(text = stringResource(R.string.cancel)) } })
     }
 }
 
@@ -329,11 +329,11 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
         }
     }
     if (showDeleteDialog) {
-        AlertDialog(onDismissRequest = { showDeleteDialog = false }, title = { Text(text = "Delete chapter?") },
-            text = { Text(text = "\"" + (ep?.title ?: "") + "\" will be permanently deleted.") },
+        AlertDialog(onDismissRequest = { showDeleteDialog = false }, title = { Text(text = stringResource(R.string.delete_chapter_title)) },
+            text = { Text(text = "\"${ep?.title ?: ""}\" " + stringResource(R.string.delete) + "?") },
             confirmButton = { Button(onClick = { showDeleteDialog = false; writerVm.deleteEpisode(episodeId, storyId) { onDeleted() } },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(text = "Delete") } },
-            dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text(text = "Cancel") } })
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(text = stringResource(R.string.delete)) } },
+            dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text(text = stringResource(R.string.cancel)) } })
     }
 }
 
@@ -349,21 +349,21 @@ fun EditEpisodeScreen(episodeId: String, storyId: String, onDone: () -> Unit, on
     LaunchedEffect(episodeId) { readerVm.load(episodeId) }
     LaunchedEffect(ep) { if (ep != null && !loaded) { title = ep!!.title; content = ep!!.content; loaded = true } }
     val wordCount = content.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }.size
-    Scaffold(topBar = { TopAppBar(title = { Text(text = "Edit Chapter " + (ep?.chapterNumber ?: "")) },
+    Scaffold(topBar = { TopAppBar(title = { Text(text = if (ep != null) stringResource(R.string.edit_chapter) + " " + ep!!.chapterNumber else stringResource(R.string.edit_chapter)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
         actions = { Text(text = wordCount.toString() + " words", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) }) }
     ) { p ->
         if (ep == null) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(10.dp)) {
-                Text(text = "Editing Chapter " + ep!!.chapterNumber, modifier = Modifier.padding(12.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSecondaryContainer) }
-            OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(text = "Chapter title") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
-            OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text(text = "Chapter content") }, modifier = Modifier.fillMaxWidth().heightIn(min = 400.dp), shape = RoundedCornerShape(12.dp), minLines = 15)
+                Text(text = stringResource(R.string.editing_chapter_of, ep!!.chapterNumber), modifier = Modifier.padding(12.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSecondaryContainer) }
+            OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(text = stringResource(R.string.chapter_title_hint)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
+            OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text(text = stringResource(R.string.chapter_content_hint)) }, modifier = Modifier.fillMaxWidth().heightIn(min = 400.dp), shape = RoundedCornerShape(12.dp), minLines = 15)
             wState.error?.let { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)) { Text(text = it, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer) } }
             Button(onClick = { writerVm.updateEpisode(episodeId, storyId, title, content) { onDone() } },
                 modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), enabled = !wState.isSaving && title.isNotBlank() && content.isNotBlank()) {
                 if (wState.isSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                else Text(text = "Save Changes", fontWeight = FontWeight.Medium)
+                else Text(text = stringResource(R.string.save_changes), fontWeight = FontWeight.Medium)
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -381,17 +381,17 @@ fun WriteScreen(user: User, onCreateStory: () -> Unit, onCreateEpisode: (String,
     var tab   by remember { mutableStateOf(0) }
     LaunchedEffect(user.userId) { vm.loadMyStories(user.userId) }
     Scaffold(
-        topBar = { TopAppBar(title = { Text(text = "Write") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) },
+        topBar = { TopAppBar(title = { Text(text = stringResource(R.string.write_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) },
         bottomBar = { KathakarBottomNav(1, onRead = onBack, onWrite = {}, onPoems = onPoemsClick, onLibrary = onLibraryClick, onProfile = onProfileClick) }
     ) { p ->
         Column(modifier = Modifier.fillMaxSize().padding(p)) {
             TabRow(selectedTabIndex = tab) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(text = "My Stories") })
-                Tab(selected = tab == 1, onClick = { tab = 1; onAiClick() }, text = { Text(text = "AI Assist (Soon)") })
+                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(text = stringResource(R.string.my_stories)) })
+                Tab(selected = tab == 1, onClick = { tab = 1; onAiClick() }, text = { Text(text = stringResource(R.string.ai_assist)) })
             }
             LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item { Button(onClick = onCreateStory, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(text = "New Story") } }
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(text = stringResource(R.string.new_story)) } }
                 if (state.isLoading) { item { Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } } }
                 items(state.myStories, key = { it.storyId }) { story ->
                     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
@@ -405,7 +405,7 @@ fun WriteScreen(user: User, onCreateStory: () -> Unit, onCreateEpisode: (String,
                             Spacer(Modifier.height(10.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = { onReadStory(story.storyId) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(3.dp)); Text(text = "Read", fontSize = 12.sp) }
+                                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(3.dp)); Text(text = stringResource(R.string.read_label), fontSize = 12.sp) }
                                 Button(onClick = { onCreateEpisode(story.storyId, story.totalEpisodes + 1) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
                                     Icon(Icons.Default.Add, null, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(3.dp)); Text(text = "Ch. " + (story.totalEpisodes + 1), fontSize = 12.sp) }
                             }
@@ -423,14 +423,14 @@ fun WriteScreen(user: User, onCreateStory: () -> Unit, onCreateEpisode: (String,
 fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit, vm: WriterViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     LaunchedEffect(state.savedStoryId) { state.savedStoryId?.let { onSaved(it); vm.resetSaved() } }
-    Scaffold(topBar = { TopAppBar(title = { Text(text = "New Story") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) }
+    Scaffold(topBar = { TopAppBar(title = { Text(text = stringResource(R.string.new_story_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) }
     ) { p ->
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(value = state.storyTitle, onValueChange = vm::onTitleChange, label = { Text(text = "Story title") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
-            OutlinedTextField(value = state.storyDesc, onValueChange = vm::onDescChange, label = { Text(text = "Short description") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), minLines = 3)
+            OutlinedTextField(value = state.storyTitle, onValueChange = vm::onTitleChange, label = { Text(text = stringResource(R.string.story_title_hint)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
+            OutlinedTextField(value = state.storyDesc, onValueChange = vm::onDescChange, label = { Text(text = stringResource(R.string.story_description_hint)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), minLines = 3)
             var catExp by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(expanded = catExp, onExpandedChange = { catExp = it }) {
-                OutlinedTextField(value = state.storyCategory.ifEmpty { "Select category" }, onValueChange = {}, readOnly = true, label = { Text(text = "Category") },
+                OutlinedTextField(value = state.storyCategory.ifEmpty { stringResource(R.string.select_category) }, onValueChange = {}, readOnly = true, label = { Text(text = stringResource(R.string.category_label)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(catExp) }, modifier = Modifier.fillMaxWidth().menuAnchor(), shape = RoundedCornerShape(12.dp))
                 ExposedDropdownMenu(expanded = catExp, onDismissRequest = { catExp = false }) {
                     KathakarMeta.CATEGORIES.forEach { cat -> DropdownMenuItem(text = { Text(text = cat) }, onClick = { vm.onCategoryChange(cat); catExp = false }) } }
@@ -438,7 +438,7 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
             var langExp by remember { mutableStateOf(false) }
             val selectedLang = KathakarMeta.LANGUAGES.find { it.first == state.storyLanguage }?.second ?: "English"
             ExposedDropdownMenuBox(expanded = langExp, onExpandedChange = { langExp = it }) {
-                OutlinedTextField(value = selectedLang, onValueChange = {}, readOnly = true, label = { Text(text = "Language") },
+                OutlinedTextField(value = selectedLang, onValueChange = {}, readOnly = true, label = { Text(text = stringResource(R.string.language_label)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(langExp) }, modifier = Modifier.fillMaxWidth().menuAnchor(), shape = RoundedCornerShape(12.dp))
                 ExposedDropdownMenu(expanded = langExp, onDismissRequest = { langExp = false }) {
                     KathakarMeta.LANGUAGES.forEach { (code, name) -> DropdownMenuItem(text = { Text(text = name) }, onClick = { vm.onLanguageChange(code); langExp = false }) } }
@@ -446,7 +446,7 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
             state.error?.let { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)) { Text(text = it, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer) } }
             Button(onClick = { vm.saveStory(user.userId, user.name) }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), enabled = !state.isSaving) {
                 if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                else Text(text = "Create Story and Write Chapter 1", fontWeight = FontWeight.Medium) }
+                else Text(text = stringResource(R.string.create_story_button), fontWeight = FontWeight.Medium) }
         }
     }
 }
@@ -481,7 +481,7 @@ fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String,
     LaunchedEffect(state.savedEpisodeId) { if (state.savedEpisodeId != null) { onDone(); vm.resetSaved() } }
 
     Scaffold(topBar = { TopAppBar(
-        title = { Text(text = "Chapter " + chapterNumber) },
+        title = { Text(text = stringResource(R.string.reading_chapter, chapterNumber)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
         actions = { Text(text = state.wordCount.toString() + " words", fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) }) }
@@ -491,13 +491,13 @@ fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String,
 
             // Chapter title
             OutlinedTextField(value = state.epTitle, onValueChange = vm::onEpTitleChange,
-                label = { Text(text = "Chapter title") }, modifier = Modifier.fillMaxWidth(),
+                label = { Text(text = stringResource(R.string.chapter_title_hint)) }, modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp), singleLine = true)
 
             // Chapter 1 free badge
             if (chapterNumber == 1) {
                 Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(10.dp)) {
-                    Text(text = "Chapter 1 is always free for readers",
+                    Text(text = stringResource(R.string.chapter_1_free),
                         modifier = Modifier.padding(10.dp), fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSecondaryContainer) }
             }
@@ -511,10 +511,10 @@ fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String,
                         Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(8.dp))
-                        Text(text = "Import from file", fontWeight = FontWeight.Medium,
+                        Text(text = stringResource(R.string.import_from_file), fontWeight = FontWeight.Medium,
                             fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                     }
-                    Text(text = "Upload a .docx or .txt file to auto-fill the chapter content. Max 2 MB · 10,000 words.",
+                    Text(text = stringResource(R.string.import_file_hint),
                         fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp)
 
@@ -535,7 +535,7 @@ fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String,
                                     vm.onEpContentChange(""); importedFrom = null
                                 }, modifier = Modifier.height(24.dp),
                                     contentPadding = PaddingValues(horizontal = 6.dp)) {
-                                    Text(text = "Clear", fontSize = 10.sp,
+                                    Text(text = stringResource(R.string.clear_label), fontSize = 10.sp,
                                         color = MaterialTheme.colorScheme.error)
                                 }
                             }
@@ -558,7 +558,7 @@ fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String,
                         modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(text = if (importedFrom != null) "Replace file" else "Choose file (.docx / .txt)")
+                        Text(text = if (importedFrom != null) stringResource(R.string.replace_file) else stringResource(R.string.choose_file))
                     }
                 }
             }
@@ -567,14 +567,14 @@ fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String,
             // Divider between upload and manual typing
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HorizontalDivider(modifier = Modifier.weight(1f))
-                Text(text = "  or type manually  ", fontSize = 11.sp,
+                Text(text = "  " + stringResource(R.string.or_type_manually) + "  ", fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 HorizontalDivider(modifier = Modifier.weight(1f))
             }
 
             // Content editor
             OutlinedTextField(value = state.epContent, onValueChange = vm::onEpContentChange,
-                label = { Text(text = "Write your story here...") },
+                label = { Text(text = stringResource(R.string.write_story_hint)) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 280.dp),
                 shape = RoundedCornerShape(12.dp), minLines = 10)
 
@@ -584,13 +584,13 @@ fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String,
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = { vm.saveEpisode(storyId, authorId, chapterNumber, false) },
                     modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp),
-                    enabled = !state.isSaving) { Text(text = "Save Draft") }
+                    enabled = !state.isSaving) { Text(text = stringResource(R.string.save_draft)) }
                 Button(onClick = { vm.saveEpisode(storyId, authorId, chapterNumber, true) },
                     modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(12.dp),
                     enabled = !state.isSaving && state.epContent.isNotBlank()) {
                     if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                    else Text(text = "Publish", fontWeight = FontWeight.Medium) }
+                    else Text(text = stringResource(R.string.publish), fontWeight = FontWeight.Medium) }
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -617,7 +617,7 @@ fun PoemsScreen(user: User, onPoemClick: (String, String) -> Unit,
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = { TopAppBar(
-            title = { Text(text = "Poems", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
+            title = { Text(text = stringResource(R.string.poems_title), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
             actions = {
                 IconButton(onClick = { vm.openWriteSheet() }) {
                     Icon(Icons.Default.Add, "Write poem", tint = MaterialTheme.colorScheme.primary)
@@ -629,18 +629,18 @@ fun PoemsScreen(user: User, onPoemClick: (String, String) -> Unit,
 
             // Search bar
             item { OutlinedTextField(value = state.searchQuery, onValueChange = vm::onSearch,
-                placeholder = { Text(text = "Search poems, poets...") }, leadingIcon = { Icon(Icons.Default.Search, null) },
+                placeholder = { Text(text = stringResource(R.string.search_poems)) }, leadingIcon = { Icon(Icons.Default.Search, null) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), singleLine = true, shape = RoundedCornerShape(24.dp)) }
 
             // Format filter chips
             item { LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { FilterChip(selected = state.selectedFormat == null, onClick = { vm.onFormatFilter(null) }, label = { Text(text = "All") }) }
+                item { FilterChip(selected = state.selectedFormat == null, onClick = { vm.onFormatFilter(null) }, label = { Text(text = stringResource(R.string.filter_all)) }) }
                 items(vm.formats) { fmt -> FilterChip(selected = state.selectedFormat == fmt, onClick = { vm.onFormatFilter(fmt) }, label = { Text(text = fmt) }) }
             } }
 
             // Language filter chips
             item { LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { FilterChip(selected = state.selectedLanguage == null, onClick = { vm.onLanguageFilter(null) }, label = { Text(text = "All Languages") }) }
+                item { FilterChip(selected = state.selectedLanguage == null, onClick = { vm.onLanguageFilter(null) }, label = { Text(text = stringResource(R.string.filter_all_languages)) }) }
                 items(vm.languages) { (code, name) -> FilterChip(selected = state.selectedLanguage == code, onClick = { vm.onLanguageFilter(code) }, label = { Text(text = name) }) }
             } }
 
@@ -650,8 +650,8 @@ fun PoemsScreen(user: User, onPoemClick: (String, String) -> Unit,
                     colors = CardDefaults.cardColors(MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(14.dp)) {
                     Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "Write a poem", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Text(text = "Share your words — all poems are free to read", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(text = stringResource(R.string.write_a_poem), fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(text = stringResource(R.string.write_poem_banner_sub), fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
                         Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary)
                     }
@@ -664,17 +664,17 @@ fun PoemsScreen(user: User, onPoemClick: (String, String) -> Unit,
             } else if (state.poems.isEmpty() && state.error == null) {
                 item { Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "No poems yet", style = MaterialTheme.typography.titleMedium)
+                        Text(text = stringResource(R.string.no_poems_yet), style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
-                        Text(text = "Be the first to share your poem!", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                        Text(text = stringResource(R.string.be_first_poem), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                         Spacer(Modifier.height(12.dp))
-                        Button(onClick = { vm.openWriteSheet() }) { Text(text = "Write a poem") }
+                        Button(onClick = { vm.openWriteSheet() }) { Text(text = stringResource(R.string.write_a_poem)) }
                     } } }
             } else {
                 state.error?.let { err -> item { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer), modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(text = err, color = MaterialTheme.colorScheme.onErrorContainer, fontSize = 13.sp)
-                        TextButton(onClick = { vm.refresh() }) { Text(text = "Retry") } } } } }
+                        TextButton(onClick = { vm.refresh() }) { Text(text = stringResource(R.string.retry)) } } } } }
 
                 items(state.poems, key = { it.poemId }) { poem ->
                     PoemCard(poem = poem, currentUserId = user.userId,
@@ -755,7 +755,7 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
 
     AlertDialog(
         onDismissRequest = { vm.closeWriteSheet() },
-        title = { Text(text = if (isEditing) "Edit poem" else "Write a poem",
+        title = { Text(text = if (isEditing) stringResource(R.string.edit_poem) else stringResource(R.string.write_a_poem),
             fontWeight = FontWeight.Medium) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -763,14 +763,14 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
 
                 // Title
                 OutlinedTextField(value = state.poemTitle, onValueChange = vm::onPoemTitleChange,
-                    label = { Text(text = "Title") }, modifier = Modifier.fillMaxWidth(),
+                    label = { Text(text = stringResource(R.string.title_label)) }, modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp), singleLine = true)
 
                 // Format selector
                 var formatExp by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(expanded = formatExp, onExpandedChange = { formatExp = it }) {
                     OutlinedTextField(value = state.poemFormat, onValueChange = {}, readOnly = true,
-                        label = { Text(text = "Format") },
+                        label = { Text(text = stringResource(R.string.format_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(formatExp) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(), shape = RoundedCornerShape(12.dp))
                     ExposedDropdownMenu(expanded = formatExp, onDismissRequest = { formatExp = false }) {
@@ -787,7 +787,7 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
                     ExposedDropdownMenuBox(expanded = langExp, onExpandedChange = { langExp = it },
                         modifier = Modifier.weight(1f)) {
                         OutlinedTextField(value = langName, onValueChange = {}, readOnly = true,
-                            label = { Text(text = "Language") },
+                            label = { Text(text = stringResource(R.string.language_label)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(langExp) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(), shape = RoundedCornerShape(12.dp))
                         ExposedDropdownMenu(expanded = langExp, onDismissRequest = { langExp = false }) {
@@ -800,7 +800,7 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
                     ExposedDropdownMenuBox(expanded = moodExp, onExpandedChange = { moodExp = it },
                         modifier = Modifier.weight(1f)) {
                         OutlinedTextField(value = state.poemMood, onValueChange = {}, readOnly = true,
-                            label = { Text(text = "Mood") },
+                            label = { Text(text = stringResource(R.string.mood_label)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(moodExp) },
                             modifier = Modifier.fillMaxWidth().menuAnchor(), shape = RoundedCornerShape(12.dp))
                         ExposedDropdownMenu(expanded = moodExp, onDismissRequest = { moodExp = false }) {
@@ -816,10 +816,10 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
                     colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(text = "Import poem from file",
+                        Text(text = stringResource(R.string.import_poem_file),
                             fontWeight = FontWeight.Medium, fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurface)
-                        Text(text = "Upload a .txt or .docx file. Poem will auto-fill below.",
+                        Text(text = stringResource(R.string.import_poem_hint),
                             fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         // Imported file badge
@@ -840,7 +840,7 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
                                         vm.onPoemContentChange(""); importedFrom = null
                                     }, modifier = Modifier.height(22.dp),
                                         contentPadding = PaddingValues(horizontal = 4.dp)) {
-                                        Text(text = "Clear", fontSize = 10.sp,
+                                        Text(text = stringResource(R.string.clear_label), fontSize = 10.sp,
                                             color = MaterialTheme.colorScheme.error)
                                     }
                                 }
@@ -872,14 +872,14 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
                 // Divider
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HorizontalDivider(modifier = Modifier.weight(1f))
-                    Text(text = "  or type below  ", fontSize = 10.sp,
+                    Text(text = "  " + stringResource(R.string.or_type_below) + "  ", fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider(modifier = Modifier.weight(1f))
                 }
 
                 // Poem content editor
                 OutlinedTextField(value = state.poemContent, onValueChange = vm::onPoemContentChange,
-                    label = { Text(text = "Your poem...") },
+                    label = { Text(text = stringResource(R.string.your_poem_hint)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp),
                     shape = RoundedCornerShape(12.dp), minLines = 5,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(lineHeight = 30.sp))
@@ -897,10 +897,10 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
                 enabled = !state.isSaving && state.poemTitle.isNotBlank() && state.poemContent.isNotBlank()) {
                 if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(16.dp),
                     strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                else Text(text = if (isEditing) "Update" else "Publish")
+                else Text(text = if (isEditing) stringResource(R.string.update_label) else stringResource(R.string.publish))
             }
         },
-        dismissButton = { TextButton(onClick = { vm.closeWriteSheet() }) { Text(text = "Cancel") } }
+        dismissButton = { TextButton(onClick = { vm.closeWriteSheet() }) { Text(text = stringResource(R.string.cancel)) } }
     )
 }
 
@@ -954,7 +954,7 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                     Spacer(Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = poem.authorName, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                        Text(text = "Poet", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Text(text = stringResource(R.string.poet_label), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     if (!isAuthor) {
                         OutlinedButton(onClick = { followVm.toggle(user.userId, authorId) }, shape = RoundedCornerShape(20.dp), enabled = !followState.isLoading, modifier = Modifier.height(32.dp)) {
                             Text(text = if (followState.isFollowing) "Following" else "Follow", fontSize = 11.sp) } }
@@ -978,14 +978,14 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                     if (!isAuthor) {
                         Button(onClick = { vm.openTipDialog() }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), enabled = !state.isTipping,
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)) {
-                            Text(text = "Tip poet")
+                            Text(text = stringResource(R.string.tip_poet))
                             if (poem.tipsCount > 0) { Spacer(Modifier.width(4.dp)); Text(text = "·" + poem.tipsCount, fontSize = 11.sp) }
                         }
                     } else {
                         // Author sees their tip earnings
                         Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
                             Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.Center) {
-                                Text(text = "Tips: " + poem.totalTipsCoins + " coins", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onTertiaryContainer) }
+                                Text(text = stringResource(R.string.tips_earned, poem.totalTipsCoins), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onTertiaryContainer) }
                         }
                     }
                 }
@@ -995,9 +995,9 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                     Spacer(Modifier.height(8.dp))
                     Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "Your balance: " + user.coinBalance + " coins", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.weight(1f))
+                            Text(text = stringResource(R.string.balance_coins, user.coinBalance), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.weight(1f))
                             if (user.coinBalance < MvpConfig.POEM_TIP_MIN) {
-                                TextButton(onClick = onBuyCoins) { Text(text = "Buy coins", fontSize = 11.sp) }
+                                TextButton(onClick = onBuyCoins) { Text(text = stringResource(R.string.buy_coins), fontSize = 11.sp) }
                             }
                         }
                     }
@@ -1012,10 +1012,10 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
         if (poem != null) {
             AlertDialog(
                 onDismissRequest = { vm.closeTipDialog() },
-                title = { Text(text = "Tip " + poem.authorName) },
+                title = { Text(text = stringResource(R.string.tip_poet) + " " + poem.authorName) },
                 text = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "Send coins as appreciation for this poem.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = stringResource(R.string.tip_message), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(16.dp))
                         Text(text = state.selectedTip.toString() + " coin" + (if (state.selectedTip > 1) "s" else ""), fontSize = 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.tertiary)
                         Slider(value = state.selectedTip.toFloat(), onValueChange = { vm.onTipChange(it.toInt()) },
@@ -1026,9 +1026,9 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                             Text(text = MvpConfig.POEM_TIP_MAX.toString() + " max", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Spacer(Modifier.height(8.dp))
-                        Text(text = "Your balance: " + user.coinBalance + " coins", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = stringResource(R.string.balance_coins, user.coinBalance), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (user.coinBalance < state.selectedTip) {
-                            Text(text = "Not enough coins!", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                            Text(text = stringResource(R.string.not_enough_coins), fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
                         }
                     }
                 },
@@ -1036,10 +1036,10 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                     Button(onClick = { vm.sendTip(user.userId, poem.authorId) },
                         enabled = user.coinBalance >= state.selectedTip,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)) {
-                        Text(text = "Send " + state.selectedTip + " coin" + (if (state.selectedTip > 1) "s" else ""))
+                        Text(text = stringResource(R.string.send_tip, state.selectedTip) + if (state.selectedTip > 1) "s" else "")
                     }
                 },
-                dismissButton = { TextButton(onClick = { vm.closeTipDialog() }) { Text(text = "Cancel") } }
+                dismissButton = { TextButton(onClick = { vm.closeTipDialog() }) { Text(text = stringResource(R.string.cancel)) } }
             )
         }
     }
@@ -1053,15 +1053,15 @@ fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> 
                   onPoemsClick: () -> Unit = {}, vm: LibraryViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     LaunchedEffect(userId) { vm.load(userId) }
-    Scaffold(topBar = { TopAppBar(title = { Text(text = "Library") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) },
+    Scaffold(topBar = { TopAppBar(title = { Text(text = stringResource(R.string.library_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) },
         bottomBar = { KathakarBottomNav(3, onRead = onBack, onWrite = onWriteClick, onPoems = onPoemsClick, onLibrary = {}, onProfile = onProfileClick) }
     ) { p ->
         if (state.isLoading) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
         if (state.entries.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "Your library is empty", style = MaterialTheme.typography.titleMedium)
-                    Text(text = "Bookmark stories to save them here", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) } }
+                    Text(text = stringResource(R.string.library_empty), style = MaterialTheme.typography.titleMedium)
+                    Text(text = stringResource(R.string.library_empty_sub), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) } }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(state.entries, key = { it.storyId }) { entry ->
@@ -1091,9 +1091,9 @@ fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onS
                   onPoemsClick: () -> Unit = {}, vm: ProfileViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     LaunchedEffect(user.userId) { vm.load(user.userId) }
-    Scaffold(topBar = { TopAppBar(title = { Text(text = "Profile") },
+    Scaffold(topBar = { TopAppBar(title = { Text(text = stringResource(R.string.profile_title)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
-        actions = { TextButton(onClick = onSignOut) { Text(text = "Sign out", color = MaterialTheme.colorScheme.error) } }) },
+        actions = { TextButton(onClick = onSignOut) { Text(text = stringResource(R.string.sign_out), color = MaterialTheme.colorScheme.error) } }) },
         bottomBar = { KathakarBottomNav(4, onRead = onBack, onWrite = onWriteClick, onPoems = onPoemsClick, onLibrary = onLibraryClick, onProfile = {}) }
     ) { p ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1116,32 +1116,32 @@ fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onS
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatBox("Stories", user.storiesCount.toString(), Modifier.weight(1f))
-                    StatBox("Poems",   user.poemsCount.toString(),  Modifier.weight(1f))
-                    StatBox("Followers", user.followersCount.toString(), Modifier.weight(1f))
-                    StatBox("Coins",   user.coinBalance.toString(), Modifier.weight(1f))
+                    StatBox(stringResource(R.string.stories_label), user.storiesCount.toString(), Modifier.weight(1f))
+                    StatBox(stringResource(R.string.poems_label),   user.poemsCount.toString(),  Modifier.weight(1f))
+                    StatBox(stringResource(R.string.followers_label), user.followersCount.toString(), Modifier.weight(1f))
+                    StatBox(stringResource(R.string.coins_balance_label),   user.coinBalance.toString(), Modifier.weight(1f))
                 }
             }
             if (user.isAdmin) { item { Button(onClick = onAdminDashboard, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)) {
-                Text(text = "Admin Dashboard", fontWeight = FontWeight.Medium) } } }
+                Text(text = stringResource(R.string.admin_dashboard), fontWeight = FontWeight.Medium) } } }
             item {
                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(text = "Coin Balance", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = stringResource(R.string.coin_balance_title), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(text = user.coinBalance.toString() + " coins", fontSize = 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
-                        if (user.totalCoinsEarned > 0) Text(text = "Total earned: " + user.totalCoinsEarned + " coins", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 2.dp))
+                        if (user.totalCoinsEarned > 0) Text(text = stringResource(R.string.total_earned, user.totalCoinsEarned), fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 2.dp))
                         Spacer(Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onBuyCoins, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) { Text(text = "Buy Coins") }
-                            OutlinedButton(onClick = onSubscribe, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) { Text(text = "Subscribe") } }
+                            Button(onClick = onBuyCoins, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) { Text(text = stringResource(R.string.buy_coins)) }
+                            OutlinedButton(onClick = onSubscribe, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) { Text(text = stringResource(R.string.subscribe)) } }
                         Text(text = "Preview build - payments not enabled. " + MvpConfig.FREE_COINS_ON_SIGNUP + " coins on signup.",
                             fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
                     }
                 }
             }
             if (state.coinHistory.isNotEmpty()) {
-                item { Text(text = "Coin history", fontWeight = FontWeight.Medium, fontSize = 14.sp) }
+                item { Text(text = stringResource(R.string.coin_history), fontWeight = FontWeight.Medium, fontSize = 14.sp) }
                 items(state.coinHistory) { txn ->
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(text = txn.note.ifEmpty { txn.type.name }, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -1173,14 +1173,14 @@ fun AdminDashboardScreen(onBack: () -> Unit, vm: AdminViewModel = hiltViewModel(
     LaunchedEffect(Unit) { vm.load() }
     LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(it); vm.clearMessage() } }
     Scaffold(snackbarHost = { SnackbarHost(snackbar) },
-        topBar = { TopAppBar(title = { Text(text = "Admin Dashboard") },
+        topBar = { TopAppBar(title = { Text(text = stringResource(R.string.admin_dashboard)) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.errorContainer)) }
     ) { p ->
         Column(modifier = Modifier.fillMaxSize().padding(p)) {
             Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatBox("Users",   state.stats.totalUsers.toString(),           Modifier.weight(1f))
-                StatBox("Stories", state.stats.totalStories.toString(),         Modifier.weight(1f))
+                StatBox(stringResource(R.string.stories_label), state.stats.totalStories.toString(),         Modifier.weight(1f))
                 StatBox("Poems",   state.stats.totalPoems.toString(),           Modifier.weight(1f))
                 StatBox("Coins",   state.stats.totalCoinsCirculated.toString(), Modifier.weight(1f))
             }
@@ -1257,13 +1257,13 @@ private fun AdminStoryCard(story: Story, onSuspend: () -> Unit, onRestore: () ->
             Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (story.status == "PUBLISHED") OutlinedButton(onClick = onSuspend, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(text = "Suspend", fontSize = 10.sp) }
                 else if (story.status == "SUSPENDED") OutlinedButton(onClick = onRestore, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) { Text(text = "Restore", fontSize = 10.sp) }
-                Button(onClick = { showDelete = true }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(text = "Delete", fontSize = 10.sp) }
+                Button(onClick = { showDelete = true }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(text = stringResource(R.string.delete), fontSize = 10.sp) }
             }
         }
     }
     if (showDelete) {
-        AlertDialog(onDismissRequest = { showDelete = false }, title = { Text(text = "Delete story?") }, text = { Text(text = story.title + " will be permanently deleted.") },
-            confirmButton = { Button(onClick = { showDelete = false; onDelete() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(text = "Delete permanently") } },
-            dismissButton = { TextButton(onClick = { showDelete = false }) { Text(text = "Cancel") } })
+        AlertDialog(onDismissRequest = { showDelete = false }, title = { Text(text = stringResource(R.string.delete_chapter_title)) }, text = { Text(text = story.title + " will be permanently deleted.") },
+            confirmButton = { Button(onClick = { showDelete = false; onDelete() }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text(text = stringResource(R.string.delete)) } },
+            dismissButton = { TextButton(onClick = { showDelete = false }) { Text(text = stringResource(R.string.cancel)) } })
     }
 }
