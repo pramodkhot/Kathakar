@@ -106,19 +106,32 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    private suspend fun createFreshUser(uid: String, name: String, email: String, photoUrl: String) {
+    private suspend fun createFreshUser(uid: String, name: String, email: String, photoUrl: String,
+                                        preferredLanguages: List<String> = emptyList()) {
         val userRef = db.collection(FirestoreCollections.USERS).document(uid)
         val txnRef  = db.collection(FirestoreCollections.COIN_TRANSACTIONS).document()
         val note    = "Welcome! " + MvpConfig.FREE_COINS_ON_SIGNUP + " free coins"
         db.batch().apply {
             set(userRef, User(userId = uid, name = name, email = email, photoUrl = photoUrl,
-                bio = "", role = UserRole.READER, coinBalance = MvpConfig.FREE_COINS_ON_SIGNUP,
+                bio = "", role = UserRole.WRITER, coinBalance = MvpConfig.FREE_COINS_ON_SIGNUP,
                 totalCoinsEarned = 0, followersCount = 0, followingCount = 0,
-                storiesCount = 0, isBanned = false, createdAt = Timestamp.now()))
+                storiesCount = 0, isBanned = false, createdAt = Timestamp.now(),
+                preferredLanguages = preferredLanguages))
             set(txnRef, CoinTransaction(txnId = txnRef.id, userId = uid,
                 type = CoinTxnType.SIGNUP_BONUS, coinsAmount = MvpConfig.FREE_COINS_ON_SIGNUP,
                 note = note, createdAt = Timestamp.now()))
         }.commit().await()
+    }
+
+    // Save preferred content languages to Firestore
+    suspend fun savePreferredLanguages(uid: String, languages: List<String>): Resource<Unit> {
+        return try {
+            db.collection(FirestoreCollections.USERS).document(uid)
+                .update("preferredLanguages", languages).await()
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error("Failed to save preferences: " + e.localizedMessage)
+        }
     }
 
     private suspend fun fetchUser(uid: String): User {
@@ -144,7 +157,9 @@ class AuthRepository @Inject constructor(
                 followingCount   = ((data["followingCount"] as? Long) ?: 0L).toInt(),
                 storiesCount     = ((data["storiesCount"] as? Long) ?: 0L).toInt(),
                 isBanned         = (data["isBanned"] as? Boolean) ?: false,
-                createdAt        = data["createdAt"] as? Timestamp
+                createdAt        = data["createdAt"] as? Timestamp,
+                preferredLanguages = (data["preferredLanguages"] as? List<*>)
+                    ?.filterIsInstance<String>() ?: emptyList()
             )
         } catch (e: Exception) { null }
     }
