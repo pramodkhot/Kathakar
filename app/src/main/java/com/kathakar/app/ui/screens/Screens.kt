@@ -259,7 +259,7 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit,
             items(state.episodes, key = { it.episodeId }) { ep ->
                 val isAuthor   = user.userId == (state.story?.authorId ?: "")
                 val isUnlocked = isAuthor || ep.isFree || ep.chapterNumber == 1 || state.unlockedIds.contains(ep.episodeId)
-                EpisodeRow(episode = ep, isUnlocked = isUnlocked, isAuthor = isAuthor, userCoins = user.coinBalance,
+                EpisodeRow(episode = ep, isUnlocked = isUnlocked, isUnlocking = false, isAuthor = isAuthor, userCoins = user.coinBalance,
                     onTap = { if (isUnlocked) onReadEpisode(ep.episodeId, state.story?.authorId ?: "") else vm.unlock(ep, user) })
             }
         }
@@ -646,7 +646,7 @@ fun PoemsScreen(user: User, onPoemClick: (String, String) -> Unit,
             // Language filter chips
             item { LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { FilterChip(selected = state.selectedLanguage == null, onClick = { vm.onLanguageFilter(null) }, label = { Text(text = stringResource(R.string.filter_all_languages)) }) }
-                items(vm.languages) { (code, name) -> FilterChip(selected = state.selectedLanguage == code, onClick = { vm.onLanguageFilter(code) }, label = { Text(text = name) }) }
+                items(vm.languages) { langPair -> val code = langPair.first; val name = langPair.second; FilterChip(selected = state.selectedLanguage == code, onClick = { vm.onLanguageFilter(code) }, label = { Text(text = name) }) }
             } }
 
             // Write poem banner — encourages writing
@@ -1112,7 +1112,7 @@ fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> 
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.size(48.dp, 64.dp)) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Article, null,
+                                    Icon(Icons.Default.Description, null,
                                         tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
