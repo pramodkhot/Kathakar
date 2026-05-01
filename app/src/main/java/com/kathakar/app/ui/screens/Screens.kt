@@ -165,7 +165,10 @@ fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> U
             } }
             item { LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { FilterChip(selected = state.selectedLanguage == null, onClick = { vm.onLanguage(null) }, label = { Text(text = stringResource(R.string.filter_all_languages)) }) }
-                items(vm.languages) { (code, name) -> FilterChip(selected = state.selectedLanguage == code, onClick = { vm.onLanguage(code) }, label = { Text(text = name) }) }
+                items(vm.languages) { langPair ->
+                        FilterChip(selected = state.selectedLanguage == langPair.first,
+                            onClick = { vm.onLanguage(langPair.first) },
+                            label = { Text(text = langPair.second) }) }
             } }
             if (state.isLoading) {
                 item { Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
@@ -646,7 +649,7 @@ fun PoemsScreen(user: User, onPoemClick: (String, String) -> Unit,
             // Language filter chips
             item { LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { FilterChip(selected = state.selectedLanguage == null, onClick = { vm.onLanguageFilter(null) }, label = { Text(text = stringResource(R.string.filter_all_languages)) }) }
-                items(vm.languages) { langPair -> val code = langPair.first; val name = langPair.second; FilterChip(selected = state.selectedLanguage == code, onClick = { vm.onLanguageFilter(code) }, label = { Text(text = name) }) }
+                KathakarMeta.LANGUAGES.forEach { (langCode, langName) -> item { FilterChip(selected = state.selectedLanguage == langCode, onClick = { vm.onLanguageFilter(langCode) }, label = { Text(text = langName) }) } }
             } }
 
             // Write poem banner — encourages writing
@@ -1112,7 +1115,7 @@ fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> 
                                 shape = RoundedCornerShape(8.dp),
                                 modifier = Modifier.size(48.dp, 64.dp)) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Description, null,
+                                    Icon(Icons.Default.Edit, null,
                                         tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
