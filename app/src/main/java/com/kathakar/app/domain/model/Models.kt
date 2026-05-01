@@ -136,6 +136,7 @@ data class ReadingProgress(
     val lastChapterNumber: Int = 0,
     val lastChapterTitle: String = "",
     val totalEpisodes: Int = 0,
+    val lastPageNumber: Int = 0,      // which page inside the chapter
     val updatedAt: Timestamp? = null
 ) {
     val progressPercent: Int get() =
