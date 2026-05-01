@@ -146,4 +146,6 @@
     <string name="send_tip">Send %1$d coin</string>
     <string name="send_tip_plural">Send %1$d coins</string>
 
+    <string name="new_story_btn">+ New Story</string>
+    <string name="save_chapter_btn">Save Chapter</string>
 </resources>
