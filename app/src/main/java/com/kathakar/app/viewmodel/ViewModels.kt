@@ -153,6 +153,8 @@ class StoryViewModel @Inject constructor(
     private val libRepo: LibraryRepository
 ) : ViewModel() {
     private val _s = MutableStateFlow(StoryUiState()); val state = _s.asStateFlow()
+    // Track which stories we already counted a read for this session
+    private val countedReads = mutableSetOf<String>()
 
     fun load(storyId: String, userId: String) = viewModelScope.launch {
         _s.update { it.copy(isLoading = true) }
@@ -164,8 +166,11 @@ class StoryViewModel @Inject constructor(
         _s.update { it.copy(story = story, episodes = episodes, unlockedIds = unlocked,
             isLoading = false, isBookmarked = entry?.isBookmarked == true,
             userRating = rating) }
-        // Increment read count
-        storyRepo.incrementReadCount(storyId)
+        // Increment read count once per session per story
+        if (!countedReads.contains(storyId)) {
+            countedReads.add(storyId)
+            storyRepo.incrementReadCount(storyId)
+        }
     }
 
     fun unlock(episode: Episode, user: User) {
