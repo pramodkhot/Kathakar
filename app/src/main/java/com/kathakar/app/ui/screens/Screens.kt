@@ -200,8 +200,22 @@ fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> U
 fun StoryCard(story: Story, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(modifier = modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-            AsyncImage(model = story.coverUrl.ifEmpty { null }, contentDescription = story.title,
-                modifier = Modifier.size(72.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+            // Cover image — shows photo if available, colored placeholder if not
+            if (story.coverUrl.isNotEmpty()) {
+                AsyncImage(model = story.coverUrl, contentDescription = story.title,
+                    modifier = Modifier.size(72.dp, 96.dp).clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop)
+            } else {
+                Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.size(72.dp, 96.dp)) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(text = story.title.take(1).uppercase(),
+                            fontSize = 28.sp, fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                }
+            }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = story.title, fontWeight = FontWeight.Medium, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -421,9 +435,9 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
             return@Scaffold
         }
         // Determine background and font based on reading mode
-        val readerBg = if (state.isNightMode) androidx.compose.ui.graphics.Color(0xFF1A1A1A)
+        val readerBg = if (state.isNightMode) Color(0xFF1A1A1A)
                        else MaterialTheme.colorScheme.background
-        val readerTextColor = if (state.isNightMode) androidx.compose.ui.graphics.Color(0xFFE0D5C5)
+        val readerTextColor = if (state.isNightMode) Color(0xFFE0D5C5)
                               else MaterialTheme.colorScheme.onBackground
         val readerFontFamily = when (state.fontFamily) {
             "Serif" -> FontFamily.Serif
@@ -600,18 +614,60 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
     val state by vm.state.collectAsState()
     val context = LocalContext.current
 
+    // Track selected image info for user feedback
+    var imageFileSizeKb  by remember { mutableStateOf(0L) }
+    var imageWidthPx     by remember { mutableIntStateOf(0) }
+    var imageHeightPx    by remember { mutableIntStateOf(0) }
+    var imageSizeWarning by remember { mutableStateOf<String?>(null) }
+
     // Image picker for story cover
     val coverLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let { vm.onCoverUriChange(it) }
+        uri?.let { pickedUri ->
+            vm.onCoverUriChange(pickedUri)
+            // Read file size
+            try {
+                val cursor = context.contentResolver.query(pickedUri, null, null, null, null)
+                cursor?.use { c ->
+                    val sizeIndex = c.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                    c.moveToFirst()
+                    if (sizeIndex >= 0) imageFileSizeKb = c.getLong(sizeIndex) / 1024
+                }
+                // Read image dimensions
+                val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                context.contentResolver.openInputStream(pickedUri)?.use { stream ->
+                    android.graphics.BitmapFactory.decodeStream(stream, null, opts)
+                    imageWidthPx  = opts.outWidth
+                    imageHeightPx = opts.outHeight
+                }
+                // Warn if image is too large
+                imageSizeWarning = when {
+                    imageFileSizeKb > 2048 -> "⚠️ Large file (${imageFileSizeKb}KB). Will upload but may be slow."
+                    imageFileSizeKb > 5120 -> "⚠️ Very large file. Please choose a smaller image."
+                    else -> null
+                }
+            } catch (_: Exception) { }
+        }
     }
 
     LaunchedEffect(state.savedStoryId) { state.savedStoryId?.let { sid ->
-        // Upload cover if selected before navigating
-        state.coverUri?.let { uri -> vm.uploadCover(sid, uri) }
-        onSaved(sid); vm.resetSaved()
+        // If cover selected → upload first, THEN navigate
+        // If no cover → navigate immediately
+        if (state.coverUri != null) {
+            vm.uploadCover(sid, state.coverUri!!)
+            // uploadCover updates coverUrl in state when done — navigate after
+        } else {
+            onSaved(sid); vm.resetSaved()
+        }
     } }
+
+    // Navigate after cover upload completes (coverUrl gets set by uploadCover)
+    LaunchedEffect(state.coverUrl, state.savedStoryId) {
+        if (state.savedStoryId != null && state.coverUri != null && state.coverUrl.isNotEmpty()) {
+            onSaved(state.savedStoryId!!); vm.resetSaved()
+        }
+    }
 
     Scaffold(topBar = { TopAppBar(title = { Text(text = stringResource(R.string.new_story_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) }
     ) { p ->
@@ -626,16 +682,14 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
                         AsyncImage(model = state.coverUri, contentDescription = "Cover",
                             modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp)),
                             contentScale = ContentScale.Crop)
-                        // Dark overlay with edit label
                         Box(modifier = Modifier.fillMaxSize().background(
-                            androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f),
-                            RoundedCornerShape(14.dp)),
+                            Color.Black.copy(alpha = 0.3f), RoundedCornerShape(14.dp)),
                             contentAlignment = Alignment.Center) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Edit, null, tint = androidx.compose.ui.graphics.Color.White,
+                                Icon(Icons.Default.Edit, null, tint = Color.White,
                                     modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Change Cover", color = androidx.compose.ui.graphics.Color.White,
+                                Text("Change Cover", color = Color.White,
                                     fontSize = 13.sp, fontWeight = FontWeight.Medium)
                             }
                         }
@@ -647,8 +701,68 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
                             Text("Add Cover Photo", fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium)
-                            Text("(optional)", fontSize = 11.sp,
+                            Text("Tap to pick from gallery", fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
+            // ── Image info bar — shown after image is picked ─────────────
+            if (state.coverUri != null) {
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(10.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(10.dp, 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        // Size and dimensions row
+                        Row(modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            // File size
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Info, null, modifier = Modifier.size(13.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Spacer(Modifier.width(4.dp))
+                                Text(text = if (imageFileSizeKb > 0) {
+                                    if (imageFileSizeKb >= 1024) String.format("%.1f MB", imageFileSizeKb / 1024f)
+                                    else "$imageFileSizeKb KB"
+                                } else "Calculating...",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Medium)
+                            }
+                            // Dimensions
+                            if (imageWidthPx > 0 && imageHeightPx > 0) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Star, null, modifier = Modifier.size(13.dp),
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(text = "${imageWidthPx} × ${imageHeightPx} px",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                }
+                            }
+                            // Quality indicator
+                            val quality = when {
+                                imageWidthPx >= 800 && imageHeightPx >= 1000 -> "✅ Good quality"
+                                imageWidthPx >= 400 -> "⚡ Acceptable"
+                                imageWidthPx > 0    -> "⚠️ Low resolution"
+                                else -> ""
+                            }
+                            if (quality.isNotEmpty()) {
+                                Text(text = quality, fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer)
+                            }
+                        }
+                        // Recommended spec hint
+                        Text(text = "Recommended: 800×1000px, under 500KB",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f))
+                        // Size warning if file too large
+                        if (imageSizeWarning != null) {
+                            Text(text = imageSizeWarning!!,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -678,9 +792,12 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
             )
 
             state.error?.let { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)) { Text(text = it, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer) } }
-            Button(onClick = { vm.saveStory(user.userId, user.name) }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), enabled = !state.isSaving) {
-                if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                else Text(text = stringResource(R.string.create_story_button), fontWeight = FontWeight.Medium) }
+            Button(onClick = { vm.saveStory(user.userId, user.name) }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), enabled = !state.isSaving && !state.isUploadingCover) {
+                if (state.isSaving || state.isUploadingCover) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(Modifier.width(8.dp))
+                    Text(text = if (state.isUploadingCover) "Uploading cover..." else stringResource(R.string.create_story_button))
+                } else Text(text = stringResource(R.string.create_story_button), fontWeight = FontWeight.Medium) }
         }
     }
 }
