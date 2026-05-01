@@ -236,7 +236,7 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit,
             item { Column(modifier = Modifier.padding(16.dp)) {
                 Text(text = state.story?.title ?: "", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Row(modifier = Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "by " + (state.story?.authorName ?: ""), color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text(text = "by " + (state.story?.authorName ?: ""), color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, modifier = Modifier.weight(1f).clickable { state.story?.authorId?.let { onAuthorClick(it) } })
                     if (state.story?.authorId != user.userId) {
                         OutlinedButton(onClick = { state.story?.authorId?.let { followVm.toggle(user.userId, it) } },
                             shape = RoundedCornerShape(20.dp), enabled = !followState.isLoading, modifier = Modifier.height(32.dp)) {
@@ -395,7 +395,8 @@ fun WriteScreen(user: User, onCreateStory: () -> Unit, onCreateEpisode: (String,
         Column(modifier = Modifier.fillMaxSize().padding(p)) {
             TabRow(selectedTabIndex = tab) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(text = stringResource(R.string.my_stories)) })
-                Tab(selected = tab == 1, onClick = { tab = 1; onAiClick() }, text = { Text(text = stringResource(R.string.ai_assist)) })
+                Tab(selected = tab == 1, onClick = { tab = 1; onWriterDashboard() }, text = { Text(text = stringResource(R.string.writer_dashboard)) })
+                Tab(selected = tab == 2, onClick = { tab = 2; onAiClick() }, text = { Text(text = stringResource(R.string.ai_assist)) })
             }
             LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item { Button(onClick = onCreateStory, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
@@ -1135,29 +1136,6 @@ fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> 
                 }
             }
             item { Spacer(Modifier.height(16.dp)) }
-        }
-        if (state.isLoading) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
-        if (state.entries.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = stringResource(R.string.library_empty), style = MaterialTheme.typography.titleMedium)
-                    Text(text = stringResource(R.string.library_empty_sub), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) } }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(state.entries, key = { it.storyId }) { entry ->
-                    Card(modifier = Modifier.fillMaxWidth().clickable { onStoryClick(entry.storyId) }, shape = RoundedCornerShape(12.dp)) {
-                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            AsyncImage(model = entry.storyCoverUrl.ifEmpty { null }, contentDescription = entry.storyTitle,
-                                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
-                            Spacer(Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(text = entry.storyTitle, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(text = "by " + entry.authorName, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary) }
-                            if (entry.isBookmarked) Icon(Icons.Default.Favorite, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-            }
         }
     }
 }
