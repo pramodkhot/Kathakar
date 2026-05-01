@@ -220,6 +220,11 @@ class StoryViewModel @Inject constructor(
 data class ReaderUiState(
     val episode: Episode? = null,
     val isLoading: Boolean = false,
+    // Pagination
+    val currentPage: Int = 0,
+    val totalPages: Int = 0,
+    val savedPage: Int = 0,          // restored from Firestore on open
+    val pages: List<String> = emptyList(),  // text split into pages
     // Reading settings
     val fontSize: Int = 18,
     val isNightMode: Boolean = false,
@@ -254,19 +259,89 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
+    // Split content into pages — called once when content is known
+    // charsPerPage auto-scales with font size: larger font = fewer chars per page
+    fun splitIntoPages(content: String, fontSize: Int = 18) {
+        if (content.isBlank()) return
+        val charsPerPage = when {
+            fontSize <= 14 -> 1000
+            fontSize <= 16 -> 900
+            fontSize <= 18 -> 800
+            fontSize <= 20 -> 650
+            fontSize <= 22 -> 550
+            else           -> 450
+        }
+        val paragraphs = content.trim().split("
+
+", "
+").filter { it.isNotBlank() }
+        val pages = mutableListOf<String>()
+        val current = StringBuilder()
+        for (para in paragraphs) {
+            if (current.length + para.length + 2 > charsPerPage && current.isNotEmpty()) {
+                pages.add(current.toString().trim())
+                current.clear()
+            }
+            if (current.isNotEmpty()) current.append("
+
+")
+            current.append(para)
+        }
+        if (current.isNotEmpty()) pages.add(current.toString().trim())
+        val finalPages = if (pages.isEmpty()) listOf(content) else pages
+        val startPage = _s.value.savedPage.coerceIn(0, maxOf(0, finalPages.size - 1))
+        _s.update { it.copy(pages = finalPages, totalPages = finalPages.size, currentPage = startPage) }
+    }
+
+    // Restore saved page after loading progress from Firestore
+    fun restoreSavedPage(savedPage: Int) {
+        val clamped = savedPage.coerceIn(0, maxOf(0, _s.value.totalPages - 1))
+        _s.update { it.copy(savedPage = savedPage, currentPage = clamped) }
+    }
+
+    // Called on every page swipe — saves to Firestore debounced
+    private var saveJob: kotlinx.coroutines.Job? = null
+    fun onPageChange(page: Int, userId: String, storyId: String, episode: Episode?) {
+        _s.update { it.copy(currentPage = page) }
+        val ep = episode ?: return
+        saveJob?.cancel()
+        saveJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(1500) // wait 1.5s before writing to Firestore
+            storyRepo.saveReadingProgress(ReadingProgress(
+                userId            = userId,
+                storyId           = storyId,
+                storyTitle        = "",
+                storyCoverUrl     = "",
+                authorName        = "",
+                lastEpisodeId     = ep.episodeId,
+                lastChapterNumber = ep.chapterNumber,
+                lastChapterTitle  = ep.title,
+                totalEpisodes     = 0,
+                lastPageNumber    = page))
+        }
+    }
+
     fun saveProgress(userId: String, storyId: String, episode: Episode) = viewModelScope.launch {
-        // Fetch story to get title, authorName, totalEpisodes
         val story = (storyRepo.getStory(storyId) as? Resource.Success)?.data
         storyRepo.saveReadingProgress(ReadingProgress(
-            userId = userId,
-            storyId = storyId,
-            storyTitle = story?.title ?: "",
-            storyCoverUrl = story?.coverUrl ?: "",
-            authorName = story?.authorName ?: "",
-            lastEpisodeId = episode.episodeId,
+            userId            = userId,
+            storyId           = storyId,
+            storyTitle        = story?.title ?: "",
+            storyCoverUrl     = story?.coverUrl ?: "",
+            authorName        = story?.authorName ?: "",
+            lastEpisodeId     = episode.episodeId,
             lastChapterNumber = episode.chapterNumber,
-            lastChapterTitle = episode.title,
-            totalEpisodes = story?.totalEpisodes ?: episode.chapterNumber))
+            lastChapterTitle  = episode.title,
+            totalEpisodes     = story?.totalEpisodes ?: episode.chapterNumber,
+            lastPageNumber    = _s.value.currentPage))
+    }
+
+    fun loadSavedPage(userId: String, storyId: String) = viewModelScope.launch {
+        val result = storyRepo.getReadingProgress(userId)
+        if (result is Resource.Success) {
+            val progress = result.data.find { it.storyId == storyId }
+            progress?.let { restoreSavedPage(it.lastPageNumber) }
+        }
     }
 
     fun toggleLike(userId: String, episodeId: String) = viewModelScope.launch {
@@ -302,13 +377,12 @@ class ReaderViewModel @Inject constructor(
         _s.update { it.copy(comments = it.comments.filter { c -> c.commentId != commentId }) }
     }
 
-    // Reading settings
-    fun setFontSize(size: Int)      = _s.update { it.copy(fontSize = size) }
-    fun setNightMode(on: Boolean)   = _s.update { it.copy(isNightMode = on) }
-    fun setFontFamily(f: String)    = _s.update { it.copy(fontFamily = f) }
-    fun toggleSettingsBar()         = _s.update { it.copy(showSettingsBar = !it.showSettingsBar) }
-    fun toggleComments()            = _s.update { it.copy(showComments = !it.showComments) }
-    fun onCommentChange(v: String)  = _s.update { it.copy(commentText = v) }
+    fun setFontSize(size: Int)     = _s.update { it.copy(fontSize = size) }
+    fun setNightMode(on: Boolean)  = _s.update { it.copy(isNightMode = on) }
+    fun setFontFamily(f: String)   = _s.update { it.copy(fontFamily = f) }
+    fun toggleSettingsBar()        = _s.update { it.copy(showSettingsBar = !it.showSettingsBar) }
+    fun toggleComments()           = _s.update { it.copy(showComments = !it.showComments) }
+    fun onCommentChange(v: String) = _s.update { it.copy(commentText = v) }
 }
 
 // ── Writer ─────────────────────────────────────────────────────────────────────
