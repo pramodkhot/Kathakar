@@ -112,6 +112,22 @@
     <string name="language_settings_sub">Change the language of the entire app</string>
     <string name="content_language_title">Content Languages</string>
     <string name="content_language_sub">Stories and poems in these languages will appear first in your feed</string>
+    <!-- New feature strings -->
+    <string name="writer_dashboard">Writer Dashboard</string>
+    <string name="total_reads">Total Reads</string>
+    <string name="author_profile">Author Profile</string>
+    <string name="continue_reading">Continue Reading</string>
+    <string name="notifications">Notifications</string>
+    <string name="mark_all_read">Mark all read</string>
+    <string name="no_notifications">No notifications yet</string>
+    <string name="rate_story">Rate this story</string>
+    <string name="submit">Submit</string>
+    <string name="comments">Comments</string>
+    <string name="write_comment">Write a comment…</string>
+    <string name="reading_settings">Reading Settings</string>
+    <string name="night_mode">Night mode</string>
+    <string name="day_mode">Day mode</string>
+    <string name="bookmarked">Bookmarked</string>
     <string name="theme_settings">Theme</string>
     <string name="theme_system">System default</string>
     <string name="theme_light">Light</string>
