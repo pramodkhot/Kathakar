@@ -225,6 +225,16 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit,
     LaunchedEffect(storyId) { vm.load(storyId, user.userId) }
     LaunchedEffect(state.story) { state.story?.authorId?.let { aid -> if (aid != user.userId) followVm.check(user.userId, aid) } }
     LaunchedEffect(state.justUnlockedId) { state.justUnlockedId?.let { onReadEpisode(it, state.story?.authorId ?: ""); vm.clearJustUnlocked() } }
+
+    // Rating sheet
+    if (state.showRatingSheet) {
+        StoryRatingSheet(
+            storyTitle = state.story?.title ?: "",
+            currentRating = state.userRating,
+            onSubmit = { stars, review -> vm.submitRating(user.userId, storyId, stars, review) },
+            onDismiss = { vm.closeRatingSheet() }
+        )
+    }
     Scaffold(topBar = { TopAppBar(title = { Text(text = state.story?.title ?: "", maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
         actions = { IconButton(onClick = { state.story?.let { vm.toggleBookmark(user.userId, it) } }) {
@@ -244,6 +254,51 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit,
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(text = state.story?.description ?: "", fontSize = 14.sp, lineHeight = 22.sp)
+                // Tags row
+                val tags = state.story?.tags ?: emptyList()
+                if (tags.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    StoryTagsRow(tags = tags)
+                }
+                // Stats + Rating row
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Total reads
+                    if ((state.story?.totalReads ?: 0L) > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Person, null, modifier = Modifier.size(13.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.width(3.dp))
+                            Text(text = "${state.story?.totalReads} reads", fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    // Average rating
+                    if ((state.story?.totalRatings ?: 0) > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Star, null, modifier = Modifier.size(13.dp),
+                                tint = Color(0xFFFFB800))
+                            Spacer(Modifier.width(3.dp))
+                            Text(text = "${state.story?.displayRating} (${state.story?.totalRatings})",
+                                fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    // Rate this story button (readers only)
+                    if (user.userId != state.story?.authorId) {
+                        OutlinedButton(onClick = { vm.openRatingSheet() },
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)) {
+                            Icon(Icons.Default.Star, null, modifier = Modifier.size(13.dp),
+                                tint = Color(0xFFFFB800))
+                            Spacer(Modifier.width(4.dp))
+                            Text(text = if (state.userRating != null) "Rated ${state.userRating?.stars}★"
+                                else "Rate", fontSize = 12.sp)
+                        }
+                    }
+                }
             } }
             item {
                 val isAuthor = user.userId == (state.story?.authorId ?: "")
@@ -345,6 +400,10 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
                 IconButton(onClick = { vm.toggleComments(); vm.loadComments(episodeId) }) {
                     Icon(Icons.Default.Info, null, modifier = Modifier.size(20.dp))
                 }
+                // Settings (font size / night mode)
+                IconButton(onClick = { vm.toggleSettingsBar() }) {
+                    Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp))
+                }
                 if (isAuthor) {
                     IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary) }
                     IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
@@ -358,7 +417,29 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
             }
             return@Scaffold
         }
-        Column(modifier = Modifier.fillMaxSize().padding(p)) {
+        // Determine background and font based on reading mode
+        val readerBg = if (state.isNightMode) androidx.compose.ui.graphics.Color(0xFF1A1A1A)
+                       else MaterialTheme.colorScheme.background
+        val readerTextColor = if (state.isNightMode) androidx.compose.ui.graphics.Color(0xFFE0D5C5)
+                              else MaterialTheme.colorScheme.onBackground
+        val readerFontFamily = when (state.fontFamily) {
+            "Serif" -> FontFamily.Serif
+            "Mono"  -> FontFamily.Monospace
+            else    -> FontFamily.Default
+        }
+
+        Column(modifier = Modifier.fillMaxSize().padding(p).background(readerBg)) {
+            // Reading settings bar (collapsible)
+            if (state.showSettingsBar) {
+                ReadingSettingsBar(
+                    fontSize     = state.fontSize,
+                    isNightMode  = state.isNightMode,
+                    fontFamily   = state.fontFamily,
+                    onFontSize   = { vm.setFontSize(it) },
+                    onNightMode  = { vm.setNightMode(it) },
+                    onFontFamily = { vm.setFontFamily(it) }
+                )
+            }
             // Like count bar
             if (state.likesCount > 0) {
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
@@ -386,7 +467,11 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
                         }
                     }
                     Spacer(Modifier.height(20.dp))
-                    Text(text = ep!!.content, fontSize = 16.sp, lineHeight = 28.sp)
+                    Text(text = ep!!.content,
+                        fontSize = state.fontSize.sp,
+                        lineHeight = (state.fontSize * 1.75).sp,
+                        fontFamily = readerFontFamily,
+                        color = readerTextColor)
                     Spacer(Modifier.height(32.dp))
                 }
             }
@@ -510,10 +595,62 @@ fun WriteScreen(user: User, onCreateStory: () -> Unit, onCreateEpisode: (String,
 @Composable
 fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit, vm: WriterViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
-    LaunchedEffect(state.savedStoryId) { state.savedStoryId?.let { onSaved(it); vm.resetSaved() } }
+    val context = LocalContext.current
+
+    // Image picker for story cover
+    val coverLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { vm.onCoverUriChange(it) }
+    }
+
+    LaunchedEffect(state.savedStoryId) { state.savedStoryId?.let { sid ->
+        // Upload cover if selected before navigating
+        state.coverUri?.let { uri -> vm.uploadCover(sid, uri) }
+        onSaved(sid); vm.resetSaved()
+    } }
+
     Scaffold(topBar = { TopAppBar(title = { Text(text = stringResource(R.string.new_story_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) }
     ) { p ->
         Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            // ── Cover photo picker ───────────────────────────────────────
+            Card(modifier = Modifier.fillMaxWidth().height(160.dp).clickable { coverLauncher.launch("image/*") },
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(MaterialTheme.colorScheme.surfaceVariant)) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (state.coverUri != null) {
+                        AsyncImage(model = state.coverUri, contentDescription = "Cover",
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp)),
+                            contentScale = ContentScale.Crop)
+                        // Dark overlay with edit label
+                        Box(modifier = Modifier.fillMaxSize().background(
+                            androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.3f),
+                            RoundedCornerShape(14.dp)),
+                            contentAlignment = Alignment.Center) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Edit, null, tint = androidx.compose.ui.graphics.Color.White,
+                                    modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Change Cover", color = androidx.compose.ui.graphics.Color.White,
+                                    fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(36.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(8.dp))
+                            Text("Add Cover Photo", fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium)
+                            Text("(optional)", fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
             OutlinedTextField(value = state.storyTitle, onValueChange = vm::onTitleChange, label = { Text(text = stringResource(R.string.story_title_hint)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
             OutlinedTextField(value = state.storyDesc, onValueChange = vm::onDescChange, label = { Text(text = stringResource(R.string.story_description_hint)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), minLines = 3)
             var catExp by remember { mutableStateOf(false) }
@@ -531,6 +668,12 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
                 ExposedDropdownMenu(expanded = langExp, onDismissRequest = { langExp = false }) {
                     KathakarMeta.LANGUAGES.forEach { (code, name) -> DropdownMenuItem(text = { Text(text = name) }, onClick = { vm.onLanguageChange(code); langExp = false }) } }
             }
+            // ── Tags selector ────────────────────────────────────────────
+            TagsSelector(
+                selectedTags = state.storyTags,
+                onTagsChange = { vm.onTagsChange(it) }
+            )
+
             state.error?.let { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)) { Text(text = it, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer) } }
             Button(onClick = { vm.saveStory(user.userId, user.name) }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), enabled = !state.isSaving) {
                 if (state.isSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
