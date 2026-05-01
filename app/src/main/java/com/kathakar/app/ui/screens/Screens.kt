@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -403,12 +404,14 @@ private fun EpisodeRow(episode: Episode, isUnlocked: Boolean, isUnlocking: Boole
 }
 
 // ── Episode Reader ────────────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, currentUserId: String,
-                        currentUser: User? = null,
-                        onBack: () -> Unit, onEdit: () -> Unit, onDeleted: () -> Unit,
-                        vm: ReaderViewModel = hiltViewModel(), writerVm: WriterViewModel = hiltViewModel()) {
+fun EpisodeReaderScreen(
+    episodeId: String, storyId: String, authorId: String, currentUserId: String,
+    currentUser: User? = null,
+    onBack: () -> Unit, onEdit: () -> Unit, onDeleted: () -> Unit,
+    vm: ReaderViewModel = hiltViewModel(), writerVm: WriterViewModel = hiltViewModel()
+) {
     val state    by vm.state.collectAsState()
     val ep       = state.episode
     val wState   by writerVm.state.collectAsState()
@@ -416,60 +419,133 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
     var showDeleteDialog by remember { mutableStateOf(false) }
     val isAuthor = currentUserId == authorId
 
-    LaunchedEffect(episodeId) { vm.load(episodeId, currentUserId) }
+    // Load episode + restore saved page
+    LaunchedEffect(episodeId) {
+        vm.load(episodeId, currentUserId)
+        vm.loadSavedPage(currentUserId, storyId)
+    }
+
+    // Split into pages once episode content is loaded
+    LaunchedEffect(ep?.content, state.fontSize) {
+        val content = ep?.content ?: return@LaunchedEffect
+        if (content.isNotBlank()) vm.splitIntoPages(content, state.fontSize)
+    }
+
+    // Auto-save progress when chapter loads
+    LaunchedEffect(ep) {
+        val episode = ep ?: return@LaunchedEffect
+        if (episode.episodeId.isNotEmpty()) vm.saveProgress(currentUserId, storyId, episode)
+    }
+
     LaunchedEffect(wState.message) { wState.message?.let { snackbar.showSnackbar(it); writerVm.clearMessage() } }
     LaunchedEffect(wState.error)   { wState.error?.let   { snackbar.showSnackbar(it); writerVm.clearError() } }
 
-    // ── Auto-save reading progress when chapter loads ──────────────────────
-    LaunchedEffect(ep) {
-        val episode = ep ?: return@LaunchedEffect
-        if (episode.episodeId.isNotEmpty()) {
-            vm.saveProgress(currentUserId, storyId, episode)
+    // Reader colors
+    val readerBg        = if (state.isNightMode) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.background
+    val readerTextColor = if (state.isNightMode) Color(0xFFE0D5C5) else MaterialTheme.colorScheme.onBackground
+    val readerSubColor  = if (state.isNightMode) Color(0xFFB0A898) else MaterialTheme.colorScheme.onSurfaceVariant
+    val topBarColor     = if (state.isNightMode) Color(0xFF2A2A2A) else MaterialTheme.colorScheme.surface
+    val readerFontFamily = when (state.fontFamily) {
+        "Serif" -> FontFamily.Serif
+        "Mono"  -> FontFamily.Monospace
+        else    -> FontFamily.Default
+    }
+
+    // Pager state — initialized to saved page
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+        initialPage = state.savedPage.coerceIn(0, maxOf(0, state.pages.size - 1)),
+        pageCount   = { maxOf(1, state.pages.size) }
+    )
+
+    // Sync pager → viewModel when page changes
+    LaunchedEffect(pagerState.currentPage) {
+        val page = pagerState.currentPage
+        if (page != state.currentPage) {
+            vm.onPageChange(page, currentUserId, storyId, ep)
         }
     }
 
+    // When pages list is built and saved page is known, jump to saved page
+    LaunchedEffect(state.pages.size, state.savedPage) {
+        if (state.pages.isNotEmpty() && state.savedPage > 0) {
+            val targetPage = state.savedPage.coerceIn(0, state.pages.size - 1)
+            if (pagerState.currentPage != targetPage) {
+                pagerState.scrollToPage(targetPage)
+            }
+        }
+    }
+
+    val currentPage  = if (state.pages.isEmpty()) 0 else pagerState.currentPage
+    val totalPages   = maxOf(1, state.pages.size)
+    val progressFrac = if (totalPages <= 1) 1f else currentPage.toFloat() / (totalPages - 1)
+
     Scaffold(
         snackbarHost   = { SnackbarHost(snackbar) },
-        containerColor = if (state.isNightMode) Color(0xFF1A1A1A)
-                         else MaterialTheme.colorScheme.background,
+        containerColor = readerBg,
         topBar = {
-            TopAppBar(
-                title = { Text(text = ep?.let { "Chapter " + it.chapterNumber } ?: "Reading...", maxLines = 1,
-                    color = if (state.isNightMode) Color(0xFFE0D5C5) else MaterialTheme.colorScheme.onSurface) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null,
-                    tint = if (state.isNightMode) Color(0xFFE0D5C5) else MaterialTheme.colorScheme.onSurface) } },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (state.isNightMode) Color(0xFF2A2A2A)
-                                     else MaterialTheme.colorScheme.surface),
-                actions = {
-                    // Like — readers only
-                    if (!isAuthor) {
-                        IconButton(onClick = { vm.toggleLike(currentUserId, episodeId) }) {
-                            Icon(if (state.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                null,
-                                tint = if (state.isLiked) MaterialTheme.colorScheme.error
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(text = ep?.let { "Chapter " + it.chapterNumber } ?: "Reading...",
+                                maxLines = 1, fontSize = 15.sp,
+                                color = if (state.isNightMode) Color(0xFFE0D5C5)
+                                        else MaterialTheme.colorScheme.onSurface)
+                            if (state.pages.isNotEmpty()) {
+                                Text(text = "Page ${currentPage + 1} of $totalPages",
+                                    fontSize = 11.sp, color = readerSubColor)
+                            }
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, null,
+                                tint = if (state.isNightMode) Color(0xFFE0D5C5)
+                                       else MaterialTheme.colorScheme.onSurface)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = topBarColor),
+                    actions = {
+                        if (!isAuthor) {
+                            IconButton(onClick = { vm.toggleLike(currentUserId, episodeId) }) {
+                                Icon(if (state.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    null,
+                                    tint = if (state.isLiked) MaterialTheme.colorScheme.error
+                                           else if (state.isNightMode) Color(0xFFE0D5C5)
+                                           else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(20.dp))
+                            }
+                        }
+                        IconButton(onClick = { vm.toggleComments(); vm.loadComments(episodeId) }) {
+                            Text("💬", fontSize = 16.sp)
+                        }
+                        IconButton(onClick = { vm.toggleSettingsBar() }) {
+                            Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp),
+                                tint = if (state.showSettingsBar) MaterialTheme.colorScheme.primary
                                        else if (state.isNightMode) Color(0xFFE0D5C5)
-                                       else MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(20.dp))
+                                       else MaterialTheme.colorScheme.onSurface)
+                        }
+                        if (isAuthor) {
+                            IconButton(onClick = onEdit) {
+                                Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            IconButton(onClick = { showDeleteDialog = true }) {
+                                Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
+                            }
                         }
                     }
-                    // Comments 💬
-                    IconButton(onClick = { vm.toggleComments(); vm.loadComments(episodeId) }) {
-                        Text(text = "💬", fontSize = 16.sp)
-                    }
-                    // Settings ⚙️ — highlighted when open
-                    IconButton(onClick = { vm.toggleSettingsBar() }) {
-                        Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp),
-                            tint = if (state.showSettingsBar) MaterialTheme.colorScheme.primary
-                                   else if (state.isNightMode) Color(0xFFE0D5C5)
-                                   else MaterialTheme.colorScheme.onSurface)
-                    }
-                    if (isAuthor) {
-                        IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary) }
-                        IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                    }
+                )
+                // ── Reading progress bar under top bar ─────────────────────
+                if (state.pages.isNotEmpty()) {
+                    LinearProgressIndicator(
+                        progress            = { progressFrac },
+                        modifier            = Modifier.fillMaxWidth().height(3.dp),
+                        color               = MaterialTheme.colorScheme.primary,
+                        trackColor          = if (state.isNightMode) Color(0xFF3A3A3A)
+                                              else MaterialTheme.colorScheme.surfaceVariant
+                    )
                 }
-            )
+            }
         }
     ) { p ->
         if (ep == null) {
@@ -479,18 +555,9 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
             return@Scaffold
         }
 
-        val readerBg        = if (state.isNightMode) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.background
-        val readerTextColor = if (state.isNightMode) Color(0xFFE0D5C5) else MaterialTheme.colorScheme.onBackground
-        val readerSubColor  = if (state.isNightMode) Color(0xFFB0A898) else MaterialTheme.colorScheme.onSurfaceVariant
-        val readerFontFamily = when (state.fontFamily) {
-            "Serif" -> FontFamily.Serif
-            "Mono"  -> FontFamily.Monospace
-            else    -> FontFamily.Default
-        }
-
         Column(modifier = Modifier.fillMaxSize().padding(p).background(readerBg)) {
 
-            // ── Reading settings bar ────────────────────────────────────
+            // ── Settings bar ─────────────────────────────────────────────
             if (state.showSettingsBar) {
                 ReadingSettingsBar(
                     fontSize     = state.fontSize,
@@ -502,76 +569,146 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
                 )
             }
 
-            // ── Likes bar ───────────────────────────────────────────────
-            if (state.likesCount > 0) {
-                Row(modifier = Modifier
-                    .fillMaxWidth()
-                    .background(if (state.isNightMode) Color(0xFF2A2A2A) else MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Favorite, null, modifier = Modifier.size(13.dp),
-                        tint = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.width(4.dp))
-                    Text(text = "${state.likesCount} likes", fontSize = 12.sp, color = readerSubColor)
-                }
-            }
-
-            // ── Chapter content ─────────────────────────────────────────
-            LazyColumn(modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)) {
-                item {
-                    Text(text = ep!!.title, fontSize = 22.sp, fontWeight = FontWeight.Bold,
-                        color = readerTextColor)
-                    Spacer(Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("${ep!!.wordCount} words", fontSize = 12.sp, color = readerSubColor)
-                        if (ep!!.readTimeDisplay.isNotEmpty())
-                            Text(ep!!.readTimeDisplay, fontSize = 12.sp, color = readerSubColor)
+            // ── Horizontal pager — one page per swipe ─────────────────────
+            if (state.pages.isNotEmpty()) {
+                androidx.compose.foundation.pager.HorizontalPager(
+                    state    = pagerState,
+                    modifier = Modifier.weight(1f),
+                    pageSpacing = 0.dp
+                ) { pageIndex ->
+                    val pageText = state.pages.getOrElse(pageIndex) { "" }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(readerBg)
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        // Show chapter header only on first page
+                        if (pageIndex == 0) {
+                            Text(text = ep!!.title, fontSize = (state.fontSize + 4).sp,
+                                fontWeight = FontWeight.Bold, color = readerTextColor)
+                            Spacer(Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("${ep!!.wordCount} words", fontSize = 12.sp, color = readerSubColor)
+                                if (ep!!.readTimeDisplay.isNotEmpty())
+                                    Text(ep!!.readTimeDisplay, fontSize = 12.sp, color = readerSubColor)
+                            }
+                            Spacer(Modifier.height(20.dp))
+                        }
+                        // Page content
+                        Text(
+                            text       = pageText,
+                            fontSize   = state.fontSize.sp,
+                            lineHeight = (state.fontSize * 1.75).sp,
+                            fontFamily = readerFontFamily,
+                            color      = readerTextColor
+                        )
+                        Spacer(Modifier.height(24.dp))
                     }
-                    Spacer(Modifier.height(20.dp))
-                    Text(
-                        text       = ep!!.content,
-                        fontSize   = state.fontSize.sp,
-                        lineHeight = (state.fontSize * 1.75).sp,
-                        fontFamily = readerFontFamily,
-                        color      = readerTextColor
-                    )
-                    Spacer(Modifier.height(32.dp))
+                }
+
+                // ── Page navigation footer ─────────────────────────────────
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(topBarColor)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Previous page
+                    IconButton(
+                        onClick = {
+                            if (pagerState.currentPage > 0) {
+                                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
+                                    .launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                            }
+                        },
+                        enabled = pagerState.currentPage > 0
+                    ) {
+                        Icon(Icons.Default.ArrowBack, "Previous page",
+                            tint = if (pagerState.currentPage > 0) MaterialTheme.colorScheme.primary
+                                   else readerSubColor)
+                    }
+                    // Page dots — show up to 7 dots
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        val showDots = minOf(totalPages, 7)
+                        val offset  = if (totalPages <= 7) 0
+                            else maxOf(0, minOf(currentPage - 3, totalPages - 7))
+                        repeat(showDots) { i ->
+                            val actualPage = i + offset
+                            Box(modifier = Modifier
+                                .size(if (actualPage == currentPage) 8.dp else 5.dp)
+                                .background(
+                                    if (actualPage == currentPage) MaterialTheme.colorScheme.primary
+                                    else readerSubColor.copy(alpha = 0.4f),
+                                    CircleShape)
+                            )
+                        }
+                    }
+                    // Next page
+                    IconButton(
+                        onClick = {
+                            if (pagerState.currentPage < totalPages - 1) {
+                                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main)
+                                    .launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                            }
+                        },
+                        enabled = pagerState.currentPage < totalPages - 1
+                    ) {
+                        Icon(Icons.Default.ArrowForward, "Next page",
+                            tint = if (pagerState.currentPage < totalPages - 1)
+                                       MaterialTheme.colorScheme.primary
+                                   else readerSubColor)
+                    }
+                }
+            } else {
+                // Loading pages
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             }
         }
     }
 
-    // ── Comments bottom sheet ───────────────────────────────────────────────
+    // Comments sheet
     if (state.showComments) {
         ChapterCommentsSheet(
-            comments = state.comments,
-            commentText = state.commentText,
-            isPosting = state.isPostingComment,
-            currentUserId = currentUserId,
+            comments        = state.comments,
+            commentText     = state.commentText,
+            isPosting       = state.isPostingComment,
+            currentUserId   = currentUserId,
             onCommentChange = { vm.onCommentChange(it) },
             onPost = { vm.postComment(currentUserId,
                 currentUser?.name ?: "Reader",
                 currentUser?.photoUrl ?: "",
                 episodeId, storyId) },
-            onDelete = { commentId -> vm.deleteComment(commentId, episodeId) },
+            onDelete  = { cid -> vm.deleteComment(cid, episodeId) },
             onDismiss = { vm.toggleComments() }
         )
     }
 
     if (showDeleteDialog) {
-        AlertDialog(onDismissRequest = { showDeleteDialog = false },
-            title = { Text(text = stringResource(R.string.delete_chapter_title)) },
-            text = { Text(text = "\"${ep?.title ?: "\"}\" " + stringResource(R.string.delete) + "?") },
-            confirmButton = { Button(onClick = { showDeleteDialog = false; writerVm.deleteEpisode(episodeId, storyId) { onDeleted() } },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
-                Text(text = stringResource(R.string.delete)) } },
-            dismissButton = { TextButton(onClick = { showDeleteDialog = false }) {
-                Text(text = stringResource(R.string.cancel)) } })
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title   = { Text(stringResource(R.string.delete_chapter_title)) },
+            text    = { Text("\"${ep?.title ?: ""}\": ${stringResource(R.string.delete)}?") },
+            confirmButton = {
+                Button(onClick = { showDeleteDialog = false; writerVm.deleteEpisode(episodeId, storyId) { onDeleted() } },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
     }
 }
 
-//
+
 // ── Create Story ──────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
