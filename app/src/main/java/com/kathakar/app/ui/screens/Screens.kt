@@ -215,6 +215,7 @@ fun StoryCard(story: Story, onClick: () -> Unit, modifier: Modifier = Modifier) 
 @Composable
 fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit,
                       onReadEpisode: (String, String) -> Unit, onBuyCoins: () -> Unit,
+                      onAuthorClick: (String) -> Unit = {},
                       vm: StoryViewModel = hiltViewModel(), followVm: FollowViewModel = hiltViewModel()) {
     val state       by vm.state.collectAsState()
     val followState by followVm.state.collectAsState()
@@ -301,9 +302,11 @@ private fun EpisodeRow(episode: Episode, isUnlocked: Boolean, isUnlocking: Boole
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, currentUserId: String,
+                        currentUser: User? = null,
                         onBack: () -> Unit, onEdit: () -> Unit, onDeleted: () -> Unit,
                         vm: ReaderViewModel = hiltViewModel(), writerVm: WriterViewModel = hiltViewModel()) {
-    val ep       by vm.episode.collectAsState()
+    val state    by vm.state.collectAsState()
+    val ep       = state.episode
     val wState   by writerVm.state.collectAsState()
     val snackbar  = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -376,7 +379,8 @@ fun EditEpisodeScreen(episodeId: String, storyId: String, onDone: () -> Unit, on
 fun WriteScreen(user: User, onCreateStory: () -> Unit, onCreateEpisode: (String, Int) -> Unit,
                 onAiClick: () -> Unit, onBack: () -> Unit, onReadStory: (String) -> Unit = {},
                 onLibraryClick: () -> Unit = {}, onProfileClick: () -> Unit = {},
-                onPoemsClick: () -> Unit = {}, vm: WriterViewModel = hiltViewModel()) {
+                onPoemsClick: () -> Unit = {}, onWriterDashboard: () -> Unit = {},
+                vm: WriterViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     var tab   by remember { mutableStateOf(0) }
     LaunchedEffect(user.userId) { vm.loadMyStories(user.userId) }
@@ -1056,6 +1060,78 @@ fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> 
     Scaffold(topBar = { TopAppBar(title = { Text(text = stringResource(R.string.library_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) },
         bottomBar = { KathakarBottomNav(3, onRead = onBack, onWrite = onWriteClick, onPoems = onPoemsClick, onLibrary = {}, onProfile = onProfileClick) }
     ) { p ->
+        if (state.isLoading) {
+            Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(p).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Continue Reading section
+            if (state.progress.isNotEmpty()) {
+                item {
+                    Text("Continue Reading", fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(6.dp))
+                }
+                items(state.progress.take(3)) { progress ->
+                    ContinueReadingCard(progress = progress,
+                        onClick = { onStoryClick(progress.storyId) })
+                }
+                item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
+            }
+            // Bookmarked stories
+            if (state.entries.isEmpty() && state.progress.isEmpty()) {
+                item {
+                    Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Bookmark, null, modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f))
+                            Spacer(Modifier.height(16.dp))
+                            Text(text = stringResource(R.string.library_empty), fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(text = stringResource(R.string.library_empty_sub), fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            } else if (state.entries.isNotEmpty()) {
+                item {
+                    Text("Bookmarked", fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(6.dp))
+                }
+                items(state.entries) { entry ->
+                    Card(modifier = Modifier.fillMaxWidth().clickable { onStoryClick(entry.storyId) },
+                        shape = RoundedCornerShape(12.dp)) {
+                        Row(modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.size(48.dp, 64.dp)) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Book, null,
+                                        tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = entry.storyTitle, fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(text = "by ${entry.authorName}", fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = "Ch. ${entry.lastEpisodeRead} of ${entry.totalEpisodes}",
+                                    fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Icon(Icons.Default.Bookmark, null, modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(16.dp)) }
+        }
         if (state.isLoading) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
         if (state.entries.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
@@ -1088,7 +1164,8 @@ fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> 
 fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onSubscribe: () -> Unit,
                   onBack: () -> Unit, onAdminDashboard: () -> Unit,
                   onWriteClick: () -> Unit = {}, onLibraryClick: () -> Unit = {},
-                  onPoemsClick: () -> Unit = {}, vm: ProfileViewModel = hiltViewModel()) {
+                  onPoemsClick: () -> Unit = {}, onNotifications: () -> Unit = {},
+                  onSettings: () -> Unit = {}, vm: ProfileViewModel = hiltViewModel()) {
     val state by vm.state.collectAsState()
     LaunchedEffect(user.userId) { vm.load(user.userId) }
     Scaffold(topBar = { TopAppBar(title = { Text(text = stringResource(R.string.profile_title)) },
