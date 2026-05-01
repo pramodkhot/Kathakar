@@ -190,7 +190,7 @@ private fun AuthorStoryCard(story: Story, onClick: () -> Unit) {
             Surface(color = MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(8.dp), modifier = Modifier.size(52.dp, 70.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Article, null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(Modifier.width(12.dp))
@@ -678,7 +678,7 @@ private fun NotificationRow(notif: Notification, onClick: () -> Unit) {
             modifier = Modifier.size(40.dp)) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(when (notif.type) {
-                    NotificationType.NEW_CHAPTER    -> Icons.Default.Article
+                    NotificationType.NEW_CHAPTER    -> Icons.Default.Description
                     NotificationType.NEW_FOLLOWER   -> Icons.Default.Person
                     NotificationType.STORY_LIKED    -> Icons.Default.Favorite
                     NotificationType.POEM_TIPPED    -> Icons.Default.Star
