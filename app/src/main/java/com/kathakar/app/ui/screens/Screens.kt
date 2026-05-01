@@ -196,6 +196,12 @@ fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> U
     }
 }
 
+private fun formatCount(n: Long): String = when {
+    n >= 1_000_000 -> String.format("%.1fM", n / 1_000_000f)
+    n >= 1_000     -> String.format("%.1fK", n / 1_000f)
+    else           -> n.toString()
+}
+
 @Composable
 fun StoryCard(story: Story, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Card(modifier = modifier.fillMaxWidth().clickable(onClick = onClick), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
@@ -224,6 +230,29 @@ fun StoryCard(story: Story, onClick: () -> Unit, modifier: Modifier = Modifier) 
                 Row(modifier = Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (story.category.isNotEmpty()) SuggestionChip(onClick = {}, label = { Text(text = story.category, fontSize = 11.sp) })
                     SuggestionChip(onClick = {}, label = { Text(text = story.totalEpisodes.toString() + " eps", fontSize = 11.sp) })
+                }
+                // Stats row — always shows episode count, shows reads+rating when available
+                Row(modifier = Modifier.padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    // Reads — show 0 for new stories, formatted for popular ones
+                    Text(text = "👁 ${formatCount(story.totalReads)}",
+                        fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Rating — only show when at least 1 rating exists
+                    if (story.totalRatings > 0) {
+                        Text(text = "⭐ ${story.displayRating}",
+                            fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    // Language badge
+                    val langName = KathakarMeta.LANGUAGES.find { it.first == story.language }?.second ?: ""
+                    if (langName.isNotEmpty() && story.language != "en") {
+                        Surface(color = MaterialTheme.colorScheme.tertiaryContainer,
+                            shape = RoundedCornerShape(4.dp)) {
+                            Text(text = langName, fontSize = 9.sp,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer)
+                        }
+                    }
                 }
             }
         }
@@ -399,46 +428,60 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
         }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) },
-        topBar = { TopAppBar(
-            title = { Text(text = ep?.let { "Chapter " + it.chapterNumber } ?: "Reading...", maxLines = 1) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
-            actions = {
-                // Like button
-                if (!isAuthor) {
-                    IconButton(onClick = { vm.toggleLike(currentUserId, episodeId) }) {
-                        Icon(if (state.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            null, tint = if (state.isLiked) MaterialTheme.colorScheme.error
-                                         else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp))
+    Scaffold(
+        snackbarHost   = { SnackbarHost(snackbar) },
+        containerColor = if (state.isNightMode) Color(0xFF1A1A1A)
+                         else MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text(text = ep?.let { "Chapter " + it.chapterNumber } ?: "Reading...", maxLines = 1,
+                    color = if (state.isNightMode) Color(0xFFE0D5C5) else MaterialTheme.colorScheme.onSurface) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null,
+                    tint = if (state.isNightMode) Color(0xFFE0D5C5) else MaterialTheme.colorScheme.onSurface) } },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = if (state.isNightMode) Color(0xFF2A2A2A)
+                                     else MaterialTheme.colorScheme.surface),
+                actions = {
+                    // Like — readers only
+                    if (!isAuthor) {
+                        IconButton(onClick = { vm.toggleLike(currentUserId, episodeId) }) {
+                            Icon(if (state.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                null,
+                                tint = if (state.isLiked) MaterialTheme.colorScheme.error
+                                       else if (state.isNightMode) Color(0xFFE0D5C5)
+                                       else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    // Comments 💬
+                    IconButton(onClick = { vm.toggleComments(); vm.loadComments(episodeId) }) {
+                        Text(text = "💬", fontSize = 16.sp)
+                    }
+                    // Settings ⚙️ — highlighted when open
+                    IconButton(onClick = { vm.toggleSettingsBar() }) {
+                        Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp),
+                            tint = if (state.showSettingsBar) MaterialTheme.colorScheme.primary
+                                   else if (state.isNightMode) Color(0xFFE0D5C5)
+                                   else MaterialTheme.colorScheme.onSurface)
+                    }
+                    if (isAuthor) {
+                        IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary) }
+                        IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
                     }
                 }
-                // Comment button
-                IconButton(onClick = { vm.toggleComments(); vm.loadComments(episodeId) }) {
-                    Icon(Icons.Default.Info, null, modifier = Modifier.size(20.dp))
-                }
-                // Settings (font size / night mode)
-                IconButton(onClick = { vm.toggleSettingsBar() }) {
-                    Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp))
-                }
-                if (isAuthor) {
-                    IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary) }
-                    IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                }
-            })
+            )
         }
     ) { p ->
         if (ep == null) {
-            Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
             return@Scaffold
         }
-        // Determine background and font based on reading mode
-        val readerBg = if (state.isNightMode) Color(0xFF1A1A1A)
-                       else MaterialTheme.colorScheme.background
-        val readerTextColor = if (state.isNightMode) Color(0xFFE0D5C5)
-                              else MaterialTheme.colorScheme.onBackground
+
+        val readerBg        = if (state.isNightMode) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.background
+        val readerTextColor = if (state.isNightMode) Color(0xFFE0D5C5) else MaterialTheme.colorScheme.onBackground
+        val readerSubColor  = if (state.isNightMode) Color(0xFFB0A898) else MaterialTheme.colorScheme.onSurfaceVariant
         val readerFontFamily = when (state.fontFamily) {
             "Serif" -> FontFamily.Serif
             "Mono"  -> FontFamily.Monospace
@@ -446,7 +489,8 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
         }
 
         Column(modifier = Modifier.fillMaxSize().padding(p).background(readerBg)) {
-            // Reading settings bar (collapsible)
+
+            // ── Reading settings bar ────────────────────────────────────
             if (state.showSettingsBar) {
                 ReadingSettingsBar(
                     fontSize     = state.fontSize,
@@ -457,45 +501,48 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
                     onFontFamily = { vm.setFontFamily(it) }
                 )
             }
-            // Like count bar
+
+            // ── Likes bar ───────────────────────────────────────────────
             if (state.likesCount > 0) {
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Favorite, null, modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.error)
-                        Spacer(Modifier.width(4.dp))
-                        Text(text = "${state.likesCount} likes", fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .background(if (state.isNightMode) Color(0xFF2A2A2A) else MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Favorite, null, modifier = Modifier.size(13.dp),
+                        tint = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.width(4.dp))
+                    Text(text = "${state.likesCount} likes", fontSize = 12.sp, color = readerSubColor)
                 }
             }
+
+            // ── Chapter content ─────────────────────────────────────────
             LazyColumn(modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)) {
                 item {
-                    Text(text = ep!!.title, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(text = ep!!.title, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                        color = readerTextColor)
                     Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(text = "${ep!!.wordCount} words", fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (ep!!.readTimeDisplay.isNotEmpty()) {
-                            Text(text = ep!!.readTimeDisplay, fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Text("${ep!!.wordCount} words", fontSize = 12.sp, color = readerSubColor)
+                        if (ep!!.readTimeDisplay.isNotEmpty())
+                            Text(ep!!.readTimeDisplay, fontSize = 12.sp, color = readerSubColor)
                     }
                     Spacer(Modifier.height(20.dp))
-                    Text(text = ep!!.content,
-                        fontSize = state.fontSize.sp,
+                    Text(
+                        text       = ep!!.content,
+                        fontSize   = state.fontSize.sp,
                         lineHeight = (state.fontSize * 1.75).sp,
                         fontFamily = readerFontFamily,
-                        color = readerTextColor)
+                        color      = readerTextColor
+                    )
                     Spacer(Modifier.height(32.dp))
                 }
             }
         }
     }
 
-    // Comments sheet
+    // ── Comments bottom sheet ───────────────────────────────────────────────
     if (state.showComments) {
         ChapterCommentsSheet(
             comments = state.comments,
@@ -515,7 +562,7 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
     if (showDeleteDialog) {
         AlertDialog(onDismissRequest = { showDeleteDialog = false },
             title = { Text(text = stringResource(R.string.delete_chapter_title)) },
-            text = { Text(text = "\"${ep?.title ?: ""}\" " + stringResource(R.string.delete) + "?") },
+            text = { Text(text = "\"${ep?.title ?: "\"}\" " + stringResource(R.string.delete) + "?") },
             confirmButton = { Button(onClick = { showDeleteDialog = false; writerVm.deleteEpisode(episodeId, storyId) { onDeleted() } },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
                 Text(text = stringResource(R.string.delete)) } },
@@ -524,89 +571,7 @@ fun EpisodeReaderScreen(episodeId: String, storyId: String, authorId: String, cu
     }
 }
 
-// ── Edit Episode ──────────────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EditEpisodeScreen(episodeId: String, storyId: String, onDone: () -> Unit, onBack: () -> Unit,
-                      readerVm: ReaderViewModel = hiltViewModel(), writerVm: WriterViewModel = hiltViewModel()) {
-    val readerState by readerVm.state.collectAsState()
-    val ep = readerState.episode
-    val wState by writerVm.state.collectAsState()
-    var title   by remember { mutableStateOf("") }; var content by remember { mutableStateOf("") }
-    var loaded  by remember { mutableStateOf(false) }
-    LaunchedEffect(episodeId) { readerVm.load(episodeId, "") }
-    LaunchedEffect(ep) { if (ep != null && !loaded) { title = ep!!.title; content = ep!!.content; loaded = true } }
-    val wordCount = content.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }.size
-    Scaffold(topBar = { TopAppBar(title = { Text(text = if (ep != null) stringResource(R.string.edit_chapter) + " " + ep!!.chapterNumber else stringResource(R.string.edit_chapter)) },
-        navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
-        actions = { Text(text = wordCount.toString() + " words", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) }) }
-    ) { p ->
-        if (ep == null) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(10.dp)) {
-                Text(text = stringResource(R.string.editing_chapter_of, ep!!.chapterNumber), modifier = Modifier.padding(12.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSecondaryContainer) }
-            OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(text = stringResource(R.string.chapter_title_hint)) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
-            OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text(text = stringResource(R.string.chapter_content_hint)) }, modifier = Modifier.fillMaxWidth().heightIn(min = 400.dp), shape = RoundedCornerShape(12.dp), minLines = 15)
-            wState.error?.let { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)) { Text(text = it, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer) } }
-            Button(onClick = { writerVm.updateEpisode(episodeId, storyId, title, content) { onDone() } },
-                modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), enabled = !wState.isSaving && title.isNotBlank() && content.isNotBlank()) {
-                if (wState.isSaving) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                else Text(text = stringResource(R.string.save_changes), fontWeight = FontWeight.Medium)
-            }
-            Spacer(Modifier.height(24.dp))
-        }
-    }
-}
-
-// ── Write (Stories) ───────────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun WriteScreen(user: User, onCreateStory: () -> Unit, onCreateEpisode: (String, Int) -> Unit,
-                onAiClick: () -> Unit, onBack: () -> Unit, onReadStory: (String) -> Unit = {},
-                onLibraryClick: () -> Unit = {}, onProfileClick: () -> Unit = {},
-                onPoemsClick: () -> Unit = {}, onWriterDashboard: () -> Unit = {},
-                vm: WriterViewModel = hiltViewModel()) {
-    val state by vm.state.collectAsState()
-    var tab   by remember { mutableStateOf(0) }
-    LaunchedEffect(user.userId) { vm.loadMyStories(user.userId) }
-    Scaffold(
-        topBar = { TopAppBar(title = { Text(text = stringResource(R.string.write_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) },
-        bottomBar = { KathakarBottomNav(1, onRead = onBack, onWrite = {}, onPoems = onPoemsClick, onLibrary = onLibraryClick, onProfile = onProfileClick) }
-    ) { p ->
-        Column(modifier = Modifier.fillMaxSize().padding(p)) {
-            TabRow(selectedTabIndex = tab) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(text = stringResource(R.string.my_stories)) })
-                Tab(selected = tab == 1, onClick = { tab = 1; onWriterDashboard() }, text = { Text(text = stringResource(R.string.writer_dashboard)) })
-                Tab(selected = tab == 2, onClick = { tab = 2; onAiClick() }, text = { Text(text = stringResource(R.string.ai_assist)) })
-            }
-            LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                item { Button(onClick = onCreateStory, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(text = stringResource(R.string.new_story)) } }
-                if (state.isLoading) { item { Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } } }
-                items(state.myStories, key = { it.storyId }) { story ->
-                    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = story.title, fontWeight = FontWeight.Medium, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(text = story.totalEpisodes.toString() + " episodes - " + story.category, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp)) }
-                                Surface(color = if (story.status == "PUBLISHED") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(6.dp)) {
-                                    Text(text = story.status.lowercase(), fontSize = 11.sp, modifier = Modifier.padding(7.dp, 3.dp)) } }
-                            Spacer(Modifier.height(10.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = { onReadStory(story.storyId) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(3.dp)); Text(text = stringResource(R.string.read_label), fontSize = 12.sp) }
-                                Button(onClick = { onCreateEpisode(story.storyId, story.totalEpisodes + 1) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(3.dp)); Text(text = "Ch. " + (story.totalEpisodes + 1), fontSize = 12.sp) }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
+//
 // ── Create Story ──────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
