@@ -190,7 +190,7 @@ private fun AuthorStoryCard(story: Story, onClick: () -> Unit) {
             Surface(color = MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(8.dp), modifier = Modifier.size(52.dp, 70.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Book, null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Article, null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(Modifier.width(12.dp))
@@ -278,7 +278,7 @@ fun WriterDashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         DashboardStatCard(label = "Total Reads",
                             value = formatLargeNumber(stats.totalReads),
-                            icon = Icons.Default.Visibility, modifier = Modifier.weight(1f))
+                            icon = Icons.Default.Search, modifier = Modifier.weight(1f))
                         DashboardStatCard(label = "Coins Earned",
                             value = stats.totalCoinsEarned.toString(),
                             icon = Icons.Default.Star, modifier = Modifier.weight(1f))
@@ -439,8 +439,8 @@ fun ReadingSettingsBar(
 
             // Night mode
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (isNightMode) Icons.Default.NightlightRound
-                     else Icons.Default.WbSunny, null, modifier = Modifier.size(20.dp))
+                Icon(if (isNightMode) Icons.Default.Star
+                     else Icons.Default.Star, null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
                 Text(if (isNightMode) "Night mode" else "Day mode",
                     modifier = Modifier.weight(1f), fontSize = 14.sp)
@@ -485,7 +485,7 @@ fun StoryRatingSheet(
                         IconButton(onClick = { selectedStars = star },
                             modifier = Modifier.size(36.dp)) {
                             Icon(if (star <= selectedStars) Icons.Default.Star
-                                 else Icons.Default.StarBorder, null,
+                                 else Icons.Default.FavoriteBorder, null,
                                 tint = if (star <= selectedStars) Color(0xFFFFB800)
                                        else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(28.dp))
@@ -678,11 +678,11 @@ private fun NotificationRow(notif: Notification, onClick: () -> Unit) {
             modifier = Modifier.size(40.dp)) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(when (notif.type) {
-                    NotificationType.NEW_CHAPTER    -> Icons.Default.Book
+                    NotificationType.NEW_CHAPTER    -> Icons.Default.Article
                     NotificationType.NEW_FOLLOWER   -> Icons.Default.Person
                     NotificationType.STORY_LIKED    -> Icons.Default.Favorite
                     NotificationType.POEM_TIPPED    -> Icons.Default.Star
-                    NotificationType.COMMENT_ON_STORY -> Icons.Default.Comment
+                    NotificationType.COMMENT_ON_STORY -> Icons.Default.Info
                     NotificationType.SYSTEM         -> Icons.Default.Info
                 }, null, modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary)
