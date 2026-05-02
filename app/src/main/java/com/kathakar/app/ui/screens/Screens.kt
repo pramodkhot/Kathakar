@@ -133,9 +133,8 @@ fun LoginScreen(viewModel: AuthViewModel, onSuccess: () -> Unit) {
 }
 
 // ── Home (Stories) ────────────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 // ── Reading Challenge Widget ───────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReadingChallengeWidget(
     challenge: com.kathakar.app.domain.model.ReadingChallenge?,
@@ -261,6 +260,8 @@ fun GoalPickerDialog(
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> Unit,
                onLibraryClick: () -> Unit, onProfileClick: () -> Unit, onPoemsClick: () -> Unit,
                onSettingsClick: () -> Unit = {},
