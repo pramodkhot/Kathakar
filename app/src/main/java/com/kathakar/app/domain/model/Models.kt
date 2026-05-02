@@ -204,7 +204,23 @@ data class Notification(
     val createdAt: Timestamp? = null
 )
 
-// ── Poem ──────────────────────────────────────────────────────────────────────
+// ── Reading Challenge ─────────────────────────────────────────────────────────
+// Stored in users/{userId}/readingChallenge subcollection or as part of user doc
+data class ReadingChallenge(
+    val userId: String = "",
+    val dailyPageGoal: Int = 20,          // user-set target, persists until changed
+    val todayPagesRead: Int = 0,          // resets at midnight
+    val totalPagesRead: Long = 0L,        // all-time counter
+    val lastReadDate: String = "",        // "YYYY-MM-DD" — used to detect new day
+    val updatedAt: com.google.firebase.Timestamp? = null
+) {
+    val remainingToday: Int get() = maxOf(0, dailyPageGoal - todayPagesRead)
+    val progressFraction: Float get() =
+        if (dailyPageGoal == 0) 0f
+        else (todayPagesRead.toFloat() / dailyPageGoal).coerceIn(0f, 1f)
+    val isGoalMet: Boolean get() = todayPagesRead >= dailyPageGoal
+    val progressPercent: Int get() = (progressFraction * 100).toInt()
+}
 data class Poem(
     val poemId: String = "",
     val title: String = "",
