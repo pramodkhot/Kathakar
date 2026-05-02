@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -134,12 +135,141 @@ fun LoginScreen(viewModel: AuthViewModel, onSuccess: () -> Unit) {
 // ── Home (Stories) ────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+// ── Reading Challenge Widget ───────────────────────────────────────────────────
+@Composable
+fun ReadingChallengeWidget(
+    challenge: com.kathakar.app.domain.model.ReadingChallenge?,
+    onSetGoal: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (challenge == null) return
+    Card(modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(MaterialTheme.colorScheme.primaryContainer)) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Header row
+            Row(modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "📖 Reading Challenge",
+                    fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer)
+                TextButton(onClick = onSetGoal, contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.height(28.dp)) {
+                    Text(text = "Change Goal", fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            // Stats row
+            Row(modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = challenge.totalPagesRead.toString(),
+                        fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(text = "Total pages", fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = challenge.todayPagesRead.toString(),
+                        fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(text = "Today", fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = challenge.dailyPageGoal.toString(),
+                        fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(text = "Daily goal", fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = if (challenge.isGoalMet) "🎉" else challenge.remainingToday.toString(),
+                        fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(text = if (challenge.isGoalMet) "Done!" else "Remaining",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            // Progress bar
+            LinearProgressIndicator(
+                progress = { challenge.progressFraction },
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                color = if (challenge.isGoalMet) Color(0xFF22C55E)
+                        else MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(text = "${challenge.progressPercent}% of daily goal",
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+        }
+    }
+}
+
+// Goal Picker Dialog
+@Composable
+fun GoalPickerDialog(
+    currentGoal: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val goals = listOf(10, 20, 40, 50, 100)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Set Daily Reading Goal", fontWeight = FontWeight.Medium) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("How many pages do you want to read each day?",
+                    fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    goals.forEach { goal ->
+                        val selected = goal == currentGoal
+                        Surface(
+                            modifier = Modifier.weight(1f).clickable { onSelect(goal) },
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (selected) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceVariant,
+                            border = if (selected) androidx.compose.foundation.BorderStroke(
+                                2.dp, MaterialTheme.colorScheme.primary) else null
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = goal.toString(), fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = if (selected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = "pages", fontSize = 9.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+
 fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> Unit,
                onLibraryClick: () -> Unit, onProfileClick: () -> Unit, onPoemsClick: () -> Unit,
                onSettingsClick: () -> Unit = {},
-               vm: HomeViewModel = hiltViewModel()) {
-    val state     by vm.state.collectAsState()
-    val listState  = rememberLazyListState()
+               vm: HomeViewModel = hiltViewModel(),
+               challengeVm: ReadingChallengeViewModel = hiltViewModel()) {
+    val state          by vm.state.collectAsState()
+    val challengeState by challengeVm.state.collectAsState()
+    val listState       = rememberLazyListState()
+    LaunchedEffect(user.userId) { challengeVm.load(user.userId) }
     Scaffold(
         topBar = { TopAppBar(
             title = { Text(text = stringResource(R.string.app_name), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
@@ -175,6 +305,24 @@ fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> U
                             onClick = { vm.onLanguage(langPair.first) },
                             label = { Text(text = langPair.second) }) }
             } }
+            // ── Reading Challenge Widget ─────────────────────────────────
+            item {
+                ReadingChallengeWidget(
+                    challenge = challengeState.challenge,
+                    onSetGoal = { challengeVm.openGoalPicker() },
+                    modifier  = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
+            // Goal picker dialog
+            if (challengeState.showGoalPicker) {
+                item {
+                    GoalPickerDialog(
+                        currentGoal = challengeState.challenge?.dailyPageGoal ?: 20,
+                        onSelect    = { goal -> challengeVm.setDailyGoal(user.userId, goal) },
+                        onDismiss   = { challengeVm.closeGoalPicker() }
+                    )
+                }
+            }
             if (state.isLoading) {
                 item { Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
             } else if (state.stories.isEmpty() && state.error == null) {
@@ -291,6 +439,30 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit,
     ) { p ->
         if (state.isLoading) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
         LazyColumn(modifier = Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(bottom = 24.dp)) {
+            item {
+                // ── Cover image banner ────────────────────────────────────
+                val coverUrl = state.story?.coverUrl ?: ""
+                if (coverUrl.isNotEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+                        AsyncImage(model = coverUrl, contentDescription = state.story?.title,
+                            modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        // Dark gradient overlay at bottom for readability
+                        Box(modifier = Modifier.fillMaxWidth().height(80.dp)
+                            .align(Alignment.BottomCenter)
+                            .background(androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)))))
+                    }
+                } else {
+                    // Placeholder banner when no cover
+                    Box(modifier = Modifier.fillMaxWidth().height(100.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center) {
+                        Text(text = state.story?.title?.take(1)?.uppercase() ?: "K",
+                            fontSize = 48.sp, fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                }
+            }
             item { Column(modifier = Modifier.padding(16.dp)) {
                 Text(text = state.story?.title ?: "", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Row(modifier = Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -840,8 +1012,13 @@ fun EditEpisodeScreen(episodeId: String, storyId: String,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(end = 12.dp)) }) }
     ) { p ->
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(p)
+            .imePadding()
+            .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(value = state.epTitle, onValueChange = vm::onEpTitleChange,
                 label = { Text(text = stringResource(R.string.chapter_title_hint)) },
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
@@ -872,6 +1049,63 @@ fun EditEpisodeScreen(episodeId: String, storyId: String,
 }
 
 
+// ── Copyright Consent Dialog ───────────────────────────────────────────────────
+// Shown once when user publishes their first story or poem
+@Composable
+fun CopyrightConsentDialog(
+    onAccept: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var originalWork  by remember { mutableStateOf(false) }
+    var agreeTerms    by remember { mutableStateOf(false) }
+    val canProceed = originalWork && agreeTerms
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Publishing Agreement", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Before publishing, please confirm:",
+                    fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                // Checkbox 1
+                Row(verticalAlignment = Alignment.Top,
+                    modifier = Modifier.clickable { originalWork = !originalWork }) {
+                    Checkbox(checked = originalWork, onCheckedChange = { originalWork = it },
+                        modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(text = "This is my original work. I hold all rights to this content and it does not violate anyone's copyright.",
+                        fontSize = 13.sp, lineHeight = 18.sp)
+                }
+
+                // Checkbox 2
+                Row(verticalAlignment = Alignment.Top,
+                    modifier = Modifier.clickable { agreeTerms = !agreeTerms }) {
+                    Checkbox(checked = agreeTerms, onCheckedChange = { agreeTerms = it },
+                        modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(text = "I agree to KathaKar's Terms of Service and Content Policy. I understand that violating these terms may result in content removal.",
+                        fontSize = 13.sp, lineHeight = 18.sp)
+                }
+
+                if (!canProceed) {
+                    Text(text = "Please check both boxes to continue.",
+                        fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onAccept, enabled = canProceed) {
+                Text("I Agree & Publish")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+
 // ── Create Story ──────────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -879,11 +1113,29 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
     val state by vm.state.collectAsState()
     val context = LocalContext.current
 
+    // Copyright consent — shown before first publish
+    var showConsentDialog by remember { mutableStateOf(false) }
+    // Check if user already gave consent (stored in shared prefs for speed)
+    val prefs = remember { context.getSharedPreferences("kathakar_prefs", android.content.Context.MODE_PRIVATE) }
+    val hasConsented = remember { prefs.getBoolean("copyright_consent_${user.userId}", false) }
+
     // Track selected image info for user feedback
     var imageFileSizeKb  by remember { mutableStateOf(0L) }
     var imageWidthPx     by remember { mutableIntStateOf(0) }
     var imageHeightPx    by remember { mutableIntStateOf(0) }
     var imageSizeWarning by remember { mutableStateOf<String?>(null) }
+
+    // Show consent dialog when triggered
+    if (showConsentDialog) {
+        CopyrightConsentDialog(
+            onAccept = {
+                prefs.edit().putBoolean("copyright_consent_${user.userId}", true).apply()
+                showConsentDialog = false
+                vm.saveStory(user.userId, user.name)
+            },
+            onDismiss = { showConsentDialog = false }
+        )
+    }
 
     // Image picker for story cover
     val coverLauncher = rememberLauncherForActivityResult(
@@ -936,7 +1188,8 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
 
     Scaffold(topBar = { TopAppBar(title = { Text(text = stringResource(R.string.new_story_title)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) }
     ) { p ->
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(p).imePadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
             // ── Cover photo picker ───────────────────────────────────────
             Card(modifier = Modifier.fillMaxWidth().height(160.dp).clickable { coverLauncher.launch("image/*") },
@@ -1057,7 +1310,11 @@ fun CreateStoryScreen(user: User, onSaved: (String) -> Unit, onBack: () -> Unit,
             )
 
             state.error?.let { Card(colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)) { Text(text = it, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onErrorContainer) } }
-            Button(onClick = { vm.saveStory(user.userId, user.name) }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), enabled = !state.isSaving && !state.isUploadingCover) {
+            Button(onClick = {
+                // Show consent dialog if never agreed before
+                if (!hasConsented) showConsentDialog = true
+                else vm.saveStory(user.userId, user.name)
+            }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp), enabled = !state.isSaving && !state.isUploadingCover) {
                 if (state.isSaving || state.isUploadingCover) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                     Spacer(Modifier.width(8.dp))
@@ -1258,6 +1515,12 @@ fun PoemsScreen(user: User, onPoemClick: (String, String) -> Unit,
             item { LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item { FilterChip(selected = state.selectedLanguage == null, onClick = { vm.onLanguageFilter(null) }, label = { Text(text = stringResource(R.string.filter_all_languages)) }) }
                 KathakarMeta.LANGUAGES.forEach { (langCode, langName) -> item { FilterChip(selected = state.selectedLanguage == langCode, onClick = { vm.onLanguageFilter(langCode) }, label = { Text(text = langName) }) } }
+            } }
+
+            // Mood filter chips
+            item { LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { FilterChip(selected = state.selectedMood == null, onClick = { vm.onMoodFilter(null) }, label = { Text(text = stringResource(R.string.filter_all)) }) }
+                items(vm.moods) { mood -> FilterChip(selected = state.selectedMood == mood, onClick = { vm.onMoodFilter(mood) }, label = { Text(text = mood) }) }
             } }
 
             // Write poem banner — encourages writing
