@@ -1006,7 +1006,9 @@ fun EditEpisodeScreen(episodeId: String, storyId: String,
         if (state.message != null) { onDone(); vm.clearMessage() }
     }
 
-    Scaffold(topBar = { TopAppBar(
+    Scaffold(
+        contentWindowInsets = WindowInsets(0),
+        topBar = { TopAppBar(
         title = { Text(text = stringResource(R.string.edit_chapter)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
         actions = { Text(text = "${state.wordCount} words", fontSize = 12.sp,
@@ -1015,11 +1017,12 @@ fun EditEpisodeScreen(episodeId: String, storyId: String,
     ) { p ->
         Column(modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(p)
-            .imePadding()
-            .padding(16.dp),
+            .windowInsetsPadding(WindowInsets.ime)
+            .padding(horizontal = 16.dp)
+            .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(value = state.epTitle, onValueChange = vm::onEpTitleChange,
                 label = { Text(text = stringResource(R.string.chapter_title_hint)) },
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), singleLine = true)
@@ -1354,14 +1357,22 @@ fun CreateEpisodeScreen(storyId: String, chapterNumber: Int, authorId: String,
 
     LaunchedEffect(state.savedEpisodeId) { if (state.savedEpisodeId != null) { onDone(); vm.resetSaved() } }
 
-    Scaffold(topBar = { TopAppBar(
+    Scaffold(
+        contentWindowInsets = WindowInsets(0),
+        topBar = { TopAppBar(
         title = { Text(text = stringResource(R.string.reading_chapter, chapterNumber)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
         actions = { Text(text = state.wordCount.toString() + " words", fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(end = 12.dp)) }) }
     ) { p ->
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(p)
+            .windowInsetsPadding(WindowInsets.ime)
+            .padding(horizontal = 16.dp)
+            .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Spacer(Modifier.height(8.dp))
 
             // Chapter title
             OutlinedTextField(value = state.epTitle, onValueChange = vm::onEpTitleChange,
@@ -1785,7 +1796,7 @@ fun WritePoemSheet(user: User, vm: PoemsViewModel) {
 }
 
 // ── Poem Detail Screen ────────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                      onBack: () -> Unit, onBuyCoins: () -> Unit,
@@ -1810,22 +1821,59 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
         if (state.isLoading) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
         val poem = state.poem ?: return@Scaffold
 
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp)) {
-            item {
-                // Format + mood chips
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-                    Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(6.dp)) {
-                        Text(text = poem.format, fontSize = 11.sp, modifier = Modifier.padding(7.dp, 3.dp), color = MaterialTheme.colorScheme.onSecondaryContainer) }
-                    Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(6.dp)) {
-                        Text(text = poem.mood, fontSize = 11.sp, modifier = Modifier.padding(7.dp, 3.dp), color = MaterialTheme.colorScheme.onTertiaryContainer) }
-                }
+        // Split poem into pages — ~12 lines per page for comfortable reading
+        val poemLines = poem.content.split("\n")
+        val linesPerPage = 12
+        val poemPages = poemLines.chunked(linesPerPage).map { it.joinToString("\n") }
+        val poemPager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { maxOf(1, poemPages.size) })
+        val poemScope = rememberCoroutineScope()
+        val totalPoemPages = maxOf(1, poemPages.size)
 
-                // Full poem content — serif, large, generous line height
-                Text(text = poem.content, fontSize = 20.sp, fontStyle = FontStyle.Italic,
-                    lineHeight = 38.sp, color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(vertical = 16.dp))
+        Column(modifier = Modifier.fillMaxSize().padding(p)) {
+            // Progress bar
+            if (totalPoemPages > 1) {
+                LinearProgressIndicator(
+                    progress = { if (totalPoemPages <= 1) 1f else poemPager.currentPage.toFloat() / (totalPoemPages - 1) },
+                    modifier = Modifier.fillMaxWidth().height(3.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            // Horizontal pager for poem pages
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = poemPager,
+                modifier = Modifier.weight(1f)
+            ) { pageIdx ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp)
+                ) {
+                    item {
+                        // Show header only on first page
+                        if (pageIdx == 0) {
+                            // Format + mood chips
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(6.dp)) {
+                                    Text(text = poem.format, fontSize = 11.sp, modifier = Modifier.padding(7.dp, 3.dp), color = MaterialTheme.colorScheme.onSecondaryContainer) }
+                                Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(6.dp)) {
+                                    Text(text = poem.mood, fontSize = 11.sp, modifier = Modifier.padding(7.dp, 3.dp), color = MaterialTheme.colorScheme.onTertiaryContainer) }
+                            }
+                        }
+
+                        // Page content — poem lines for this page
+                        Text(
+                            text = poemPages.getOrElse(pageIdx) { "" },
+                            fontSize = 20.sp,
+                            fontStyle = FontStyle.Italic,
+                            lineHeight = 38.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+
+                        // Show author + actions only on last page
+                        if (pageIdx == totalPoemPages - 1) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
                 // Author row
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1882,8 +1930,42 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                         }
                     }
                 }
+            } // end HorizontalPager
+
+            // Navigation footer — only shown when poem has multiple pages
+            if (totalPoemPages > 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { poemScope.launch { poemPager.animateScrollToPage(poemPager.currentPage - 1) } },
+                        enabled = poemPager.currentPage > 0
+                    ) {
+                        Icon(Icons.Default.ArrowBack, null,
+                            tint = if (poemPager.currentPage > 0) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                    }
+                    Text(
+                        text = "Page ${poemPager.currentPage + 1} of $totalPoemPages",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    IconButton(
+                        onClick = { poemScope.launch { poemPager.animateScrollToPage(poemPager.currentPage + 1) } },
+                        enabled = poemPager.currentPage < totalPoemPages - 1
+                    ) {
+                        Icon(Icons.Default.ArrowForward, null,
+                            tint = if (poemPager.currentPage < totalPoemPages - 1) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                    }
+                }
             }
-        }
+        } // end outer Column
     }
 
     // Tip dialog
