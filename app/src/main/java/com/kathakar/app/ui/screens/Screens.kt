@@ -1899,12 +1899,13 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                                  else MaterialTheme.colorScheme.surfaceVariant
                 )
             }
-            }
 
             // Horizontal pager for poem pages
+            // Use Box to consume remaining space between progress bar and footer
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             androidx.compose.foundation.pager.HorizontalPager(
                 state = poemPager,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxSize()
             ) { pageIdx ->
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -1992,6 +1993,8 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                     }
                 }
             } // end HorizontalPager
+
+                        } // end Box wrapper for pager
 
             // ── Page navigation footer — same style as story reader ─────
             if (totalPoemPages > 1) {
@@ -2093,6 +2096,7 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
 }
 
 
+}
 }
 }
 // ── Library ───────────────────────────────────────────────────────────────────
