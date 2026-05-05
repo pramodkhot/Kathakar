@@ -12,6 +12,8 @@ sealed class Screen(val route: String) {
     object Home            : Screen("home")
     object Library         : Screen("library")
     object Profile         : Screen("profile")
+    object EditProfile     : Screen("profile/edit")
+    object CoinDetails     : Screen("profile/coins")
     object Write           : Screen("write")
     object Poems           : Screen("poems")
     object CreateStory     : Screen("write/new")
@@ -245,7 +247,29 @@ fun KathakarNavGraph(navController: NavHostController) {
                 onPoemsClick     = { navController.switchTab(Screen.Poems.route) },
                 onLibraryClick   = { navController.switchTab(Screen.Library.route) },
                 onNotifications  = { navController.navigate(Screen.Notifications.route) },
-                onSettings       = { navController.navigate(Screen.Settings.route) })
+                onSettings       = { navController.navigate(Screen.Settings.route) },
+                onEditProfile    = { navController.navigate(Screen.EditProfile.route) },
+                onCoinDetails    = { navController.navigate(Screen.CoinDetails.route) })
+        }
+
+        // ── Edit Profile ───────────────────────────────────────────────────────
+        composable(Screen.EditProfile.route) {
+            val user = auth.user ?: return@composable
+            EditProfileScreen(
+                user    = user,
+                onBack  = { navController.popBackStack() },
+                onSaved = { _, _ -> navController.popBackStack() }
+            )
+        }
+
+        // ── Coin Details ───────────────────────────────────────────────────────
+        composable(Screen.CoinDetails.route) {
+            val user = auth.user ?: return@composable
+            CoinDetailsScreen(
+                user       = user,
+                onBack     = { navController.popBackStack() },
+                onBuyCoins = { navController.navigate(Screen.BuyCoins.route) }
+            )
         }
 
         // ── Notifications ──────────────────────────────────────────────────────
