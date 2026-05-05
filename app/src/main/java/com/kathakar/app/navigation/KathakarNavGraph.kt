@@ -204,8 +204,9 @@ fun KathakarNavGraph(navController: NavHostController) {
             val authorId = back.arguments?.getString("authorId") ?: return@composable
             val user     = auth.user ?: return@composable
             PoemDetailScreen(poemId = poemId, authorId = authorId, user = user,
-                onBack     = { navController.popBackStack() },
-                onBuyCoins = { navController.navigate(Screen.BuyCoins.route) })
+                onBack        = { navController.popBackStack() },
+                onBuyCoins    = { navController.navigate(Screen.BuyCoins.route) },
+                onAuthorClick = { aid -> navController.navigate(Screen.AuthorProfile.go(aid)) })
         }
 
         // ── Author Profile ─────────────────────────────────────────────────────
