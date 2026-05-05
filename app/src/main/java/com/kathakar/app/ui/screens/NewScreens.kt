@@ -77,15 +77,12 @@ fun AuthorProfileScreen(
             item {
                 Column(modifier = Modifier.fillMaxWidth().padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
-                    // Avatar
-                    Surface(color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = CircleShape, modifier = Modifier.size(80.dp)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(text = author.initials, fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                    }
+                    // Avatar — shows uploaded photo or initials
+                    UserAvatar(
+                        photoUrl = author.photoUrl,
+                        initials = author.initials,
+                        size = 80.dp
+                    )
                     Spacer(Modifier.height(12.dp))
                     Text(text = author.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     if (author.bio.isNotBlank()) {
@@ -439,8 +436,8 @@ fun ReadingSettingsBar(
 
             // Night mode
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(if (isNightMode) Icons.Default.Star
-                     else Icons.Default.Star, null, modifier = Modifier.size(20.dp))
+                // Use emoji since NightlightRound/WbSunny not in material-icons-core
+                Text(text = if (isNightMode) "🌙" else "☀️", fontSize = 18.sp)
                 Spacer(Modifier.width(10.dp))
                 Text(if (isNightMode) "Night mode" else "Day mode",
                     modifier = Modifier.weight(1f), fontSize = 14.sp)
