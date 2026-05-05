@@ -124,6 +124,14 @@ class AuthRepository @Inject constructor(
     }
 
     // Save preferred content languages to Firestore
+    // Public version of fetchUser — called to refresh UI after profile edits
+    suspend fun fetchUserPublic(uid: String): User? {
+        return try {
+            db.collection(FirestoreCollections.USERS).document(uid)
+                .get().await().toObject(User::class.java)
+        } catch (_: Exception) { null }
+    }
+
     suspend fun savePreferredLanguages(uid: String, languages: List<String>): Resource<Unit> {
         return try {
             db.collection(FirestoreCollections.USERS).document(uid)
