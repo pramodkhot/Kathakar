@@ -2280,32 +2280,71 @@ fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onS
             if (user.isAdmin) { item { Button(onClick = onAdminDashboard, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)) {
                 Text(text = stringResource(R.string.admin_dashboard), fontWeight = FontWeight.Medium) } } }
+            // ── NEW Coin card — full tappable card linking to CoinDetailsScreen ──
             item {
-                // ── Coin card — tap to see full details ─────────────────
                 Card(modifier = Modifier.fillMaxWidth().clickable { onCoinDetails() },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(MaterialTheme.colorScheme.primaryContainer)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(text = stringResource(R.string.coin_balance_title), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(text = user.coinBalance.toString() + " coins", fontSize = 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
-                        if (user.totalCoinsEarned > 0) Text(text = stringResource(R.string.total_earned, user.totalCoinsEarned), fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 2.dp))
+                        Row(modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Column {
+                                Text("🪙 Coin Balance", fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                                Text("${user.coinBalance}", fontSize = 36.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary)
+                                if (user.totalCoinsEarned > 0) {
+                                    Text("Total earned: ${user.totalCoinsEarned}",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
+                                }
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("View all details →", fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium)
+                            }
+                        }
                         Spacer(Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onBuyCoins, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) { Text(text = stringResource(R.string.buy_coins)) }
-                            OutlinedButton(onClick = onSubscribe, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) { Text(text = stringResource(R.string.subscribe)) } }
-                        Text(text = "Preview build - payments not enabled. " + MvpConfig.FREE_COINS_ON_SIGNUP + " coins on signup.",
-                            fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
+                            Button(onClick = onBuyCoins, modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp)) {
+                                Text(stringResource(R.string.buy_coins))
+                            }
+                            OutlinedButton(onClick = onSubscribe, modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp)) {
+                                Text(stringResource(R.string.subscribe))
+                            }
+                        }
                     }
                 }
             }
+            // Coin history preview — last 3 transactions
             if (state.coinHistory.isNotEmpty()) {
-                item { Text(text = stringResource(R.string.coin_history), fontWeight = FontWeight.Medium, fontSize = 14.sp) }
-                items(state.coinHistory) { txn ->
-                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = txn.note.ifEmpty { txn.type.name }, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(text = (if (txn.coinsAmount < 0) "" else "+") + txn.coinsAmount.toString() + " coins",
+                item {
+                    Row(modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.coin_history),
+                            fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        TextButton(onClick = onCoinDetails) { Text("See all →", fontSize = 12.sp) }
+                    }
+                }
+                items(state.coinHistory.take(3)) { txn ->
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(txn.note.ifEmpty { txn.type.name.replace("_", " ").lowercase()
+                            .replaceFirstChar { c -> c.uppercase() } },
+                            fontSize = 12.sp, modifier = Modifier.weight(1f),
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text((if (txn.coinsAmount < 0) "" else "+") + "${txn.coinsAmount} coins",
                             fontSize = 12.sp, fontWeight = FontWeight.Medium,
-                            color = if (txn.coinsAmount < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary) }
+                            color = if (txn.coinsAmount < 0) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.tertiary)
+                    }
                     HorizontalDivider()
                 }
             }
@@ -2329,7 +2368,8 @@ fun EditProfileScreen(
     user: User,
     onBack: () -> Unit,
     onSaved: (name: String, bio: String) -> Unit,
-    vm: ProfileViewModel = hiltViewModel()
+    vm: ProfileViewModel = hiltViewModel(),
+    authVm: AuthViewModel = hiltViewModel()
 ) {
     val state   = vm.state.collectAsState().value
     val context = LocalContext.current
@@ -2338,11 +2378,17 @@ fun EditProfileScreen(
     val photoLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let { vm.uploadProfilePhoto(user.userId, it) { url -> onSaved(user.name, user.bio) } }
+        uri?.let { vm.uploadProfilePhoto(user.userId, it) { url ->
+            authVm.refreshUser(user.userId)
+            onSaved(user.name, user.bio)
+        } }
     }
 
     LaunchedEffect(state.profileSaveSuccess) {
-        if (state.profileSaveSuccess) { onSaved(state.editName, state.editBio) }
+        if (state.profileSaveSuccess) {
+            authVm.refreshUser(user.userId)  // refresh UI immediately
+            onSaved(state.editName, state.editBio)
+        }
     }
     LaunchedEffect(Unit) { vm.openEditProfile(user) }
 
