@@ -614,11 +614,11 @@ fun EpisodeReaderScreen(
     LaunchedEffect(wState.message) { wState.message?.let { snackbar.showSnackbar(it); writerVm.clearMessage() } }
     LaunchedEffect(wState.error)   { wState.error?.let   { snackbar.showSnackbar(it); writerVm.clearError() } }
 
-    // Reader colors
-    val readerBg        = if (state.isNightMode) Color(0xFF1A1A1A) else MaterialTheme.colorScheme.background
-    val readerTextColor = if (state.isNightMode) Color(0xFFE0D5C5) else MaterialTheme.colorScheme.onBackground
-    val readerSubColor  = if (state.isNightMode) Color(0xFFB0A898) else MaterialTheme.colorScheme.onSurfaceVariant
-    val topBarColor     = if (state.isNightMode) Color(0xFF2A2A2A) else MaterialTheme.colorScheme.surface
+    // Reader colors — Day = white like book page, Night = dark for comfortable reading
+    val readerBg        = if (state.isNightMode) Color(0xFF1A1A1A) else Color.White
+    val readerTextColor = if (state.isNightMode) Color(0xFFE0D5C5) else Color(0xFF1A1A1A)
+    val readerSubColor  = if (state.isNightMode) Color(0xFFB0A898) else Color(0xFF666666)
+    val topBarColor     = if (state.isNightMode) Color(0xFF2A2A2A) else Color.White
     val readerFontFamily = when (state.fontFamily) {
         "Serif" -> FontFamily.Serif
         "Mono"  -> FontFamily.Monospace
@@ -1812,32 +1812,93 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
     LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(it); vm.clearMessage() } }
     LaunchedEffect(state.error)   { state.error?.let   { snackbar.showSnackbar(it); vm.clearError() } }
 
+    // Poem reader settings state (local — same UX as story reader)
+    var isPoemNightMode  by remember { mutableStateOf(false) }
+    var poemFontSize     by remember { mutableIntStateOf(20) }
+    var showPoemSettings by remember { mutableStateOf(false) }
+
+    // Poem colors — explicit White for day, dark for night
+    val poemBg        = if (isPoemNightMode) Color(0xFF1A1A1A) else Color.White
+    val poemTextColor = if (isPoemNightMode) Color(0xFFE0D5C5) else Color(0xFF1A1A1A)
+    val poemSubColor  = if (isPoemNightMode) Color(0xFFB0A898) else Color(0xFF666666)
+    val poemTopBar    = if (isPoemNightMode) Color(0xFF2A2A2A) else Color.White
+
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost   = { SnackbarHost(snackbar) },
+        containerColor = poemBg,
         topBar = { TopAppBar(
-            title = { Text(text = state.poem?.title ?: "", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } }) }
+            title = { Text(text = state.poem?.title ?: "", maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = poemTextColor) },
+            navigationIcon = { IconButton(onClick = onBack) {
+                Icon(Icons.Default.ArrowBack, null, tint = poemTextColor) } },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = poemTopBar),
+            actions = {
+                // Settings toggle — same as story reader
+                IconButton(onClick = { showPoemSettings = !showPoemSettings }) {
+                    Icon(Icons.Default.Settings, null,
+                        tint = if (showPoemSettings) MaterialTheme.colorScheme.primary
+                               else poemTextColor,
+                        modifier = Modifier.size(20.dp))
+                }
+            }) }
     ) { p ->
         if (state.isLoading) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
         val poem = state.poem ?: return@Scaffold
 
-        // Split poem into pages — ~12 lines per page for comfortable reading
-        val poemLines = poem.content.split("\n")
+        // Split poem into pages — ~12 lines per page
+        val poemLines    = poem.content.split("\n")
         val linesPerPage = 12
-        val poemPages = poemLines.chunked(linesPerPage).map { it.joinToString("\n") }
-        val poemPager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { maxOf(1, poemPages.size) })
-        val poemScope = rememberCoroutineScope()
+        val poemPages    = poemLines.chunked(linesPerPage).map { it.joinToString("\n") }
+        val poemPager    = androidx.compose.foundation.pager.rememberPagerState(pageCount = { maxOf(1, poemPages.size) })
+        val poemScope    = rememberCoroutineScope()
         val totalPoemPages = maxOf(1, poemPages.size)
 
-        Column(modifier = Modifier.fillMaxSize().padding(p)) {
-            // Progress bar
+        Column(modifier = Modifier.fillMaxSize().padding(p).background(poemBg)) {
+
+            // ── Settings bar (collapsible — same as story reader) ────────
+            if (showPoemSettings) {
+                Surface(color = if (isPoemNightMode) Color(0xFF2A2A2A) else MaterialTheme.colorScheme.surfaceVariant) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Font size
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("A", fontSize = 14.sp, color = poemTextColor, modifier = Modifier.width(24.dp))
+                            Slider(
+                                value = poemFontSize.toFloat(),
+                                onValueChange = { poemFontSize = it.toInt() },
+                                valueRange = 14f..28f,
+                                steps = 6,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text("A", fontSize = 22.sp, color = poemTextColor)
+                        }
+                        Text("Font size: ${poemFontSize}sp", fontSize = 11.sp, color = poemSubColor)
+                        // Night mode toggle
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(if (isPoemNightMode) "🌙" else "☀️", fontSize = 18.sp)
+                            Spacer(Modifier.width(10.dp))
+                            Text(if (isPoemNightMode) "Night mode" else "Day mode",
+                                modifier = Modifier.weight(1f), fontSize = 14.sp,
+                                color = poemTextColor)
+                            Switch(checked = isPoemNightMode,
+                                onCheckedChange = { isPoemNightMode = it })
+                        }
+                    }
+                }
+            }
+
+            // ── Progress bar ─────────────────────────────────────────────
             if (totalPoemPages > 1) {
                 LinearProgressIndicator(
-                    progress = { if (totalPoemPages <= 1) 1f else poemPager.currentPage.toFloat() / (totalPoemPages - 1) },
+                    progress = { if (totalPoemPages <= 1) 1f
+                                 else poemPager.currentPage.toFloat() / (totalPoemPages - 1) },
                     modifier = Modifier.fillMaxWidth().height(3.dp),
                     color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    trackColor = if (isPoemNightMode) Color(0xFF3A3A3A)
+                                 else MaterialTheme.colorScheme.surfaceVariant
                 )
+            }
             }
 
             // Horizontal pager for poem pages
@@ -1864,10 +1925,10 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                         // Page content — poem lines for this page
                         Text(
                             text = poemPages.getOrElse(pageIdx) { "" },
-                            fontSize = 20.sp,
+                            fontSize = poemFontSize.sp,
                             fontStyle = FontStyle.Italic,
-                            lineHeight = 38.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            lineHeight = (poemFontSize * 1.9).sp,
+                            color = poemTextColor,
                             modifier = Modifier.padding(vertical = 16.dp)
                         )
 
@@ -1932,36 +1993,60 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                 }
             } // end HorizontalPager
 
-            // Navigation footer — only shown when poem has multiple pages
+            // ── Page navigation footer — same style as story reader ─────
             if (totalPoemPages > 1) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(poemTopBar)
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Previous arrow
                     IconButton(
                         onClick = { poemScope.launch { poemPager.animateScrollToPage(poemPager.currentPage - 1) } },
                         enabled = poemPager.currentPage > 0
                     ) {
-                        Icon(Icons.Default.ArrowBack, null,
+                        Icon(Icons.Default.ArrowBack, "Previous page",
                             tint = if (poemPager.currentPage > 0) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                                   else poemSubColor.copy(alpha = 0.3f))
                     }
-                    Text(
-                        text = "Page ${poemPager.currentPage + 1} of $totalPoemPages",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Page count — same font as story reader
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Page ${poemPager.currentPage + 1} of $totalPoemPages",
+                            fontSize = 13.sp,
+                            color = poemSubColor,
+                            fontWeight = FontWeight.Medium
+                        )
+                        // Dot indicators (up to 7)
+                        if (totalPoemPages <= 10) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(top = 4.dp)) {
+                                val offset = if (totalPoemPages <= 7) 0
+                                    else maxOf(0, minOf(poemPager.currentPage - 3, totalPoemPages - 7))
+                                val showDots = minOf(totalPoemPages, 7)
+                                repeat(showDots) { i ->
+                                    val actualPage = i + offset
+                                    Box(modifier = Modifier
+                                        .size(if (actualPage == poemPager.currentPage) 7.dp else 4.dp)
+                                        .background(
+                                            if (actualPage == poemPager.currentPage) MaterialTheme.colorScheme.primary
+                                            else poemSubColor.copy(alpha = 0.4f),
+                                            CircleShape))
+                                }
+                            }
+                        }
+                    }
+                    // Next arrow
                     IconButton(
                         onClick = { poemScope.launch { poemPager.animateScrollToPage(poemPager.currentPage + 1) } },
                         enabled = poemPager.currentPage < totalPoemPages - 1
                     ) {
-                        Icon(Icons.Default.ArrowForward, null,
+                        Icon(Icons.Default.ArrowForward, "Next page",
                             tint = if (poemPager.currentPage < totalPoemPages - 1) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                                   else poemSubColor.copy(alpha = 0.3f))
                     }
                 }
             }
