@@ -307,6 +307,17 @@ fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> U
     val challengeState by challengeVm.state.collectAsState()
     val listState       = rememberLazyListState()
     LaunchedEffect(user.userId) { challengeVm.load(user.userId) }
+    // Reload challenge every time this screen becomes active (user returns from reading)
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                challengeVm.load(user.userId)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     Scaffold(
         topBar = { TopAppBar(
             title = { Text(text = stringResource(R.string.app_name), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
@@ -616,7 +627,9 @@ fun EpisodeReaderScreen(
     episodeId: String, storyId: String, authorId: String, currentUserId: String,
     currentUser: User? = null,
     onBack: () -> Unit, onEdit: () -> Unit, onDeleted: () -> Unit,
-    vm: ReaderViewModel = hiltViewModel(), writerVm: WriterViewModel = hiltViewModel()
+    vm: ReaderViewModel = hiltViewModel(),
+    writerVm: WriterViewModel = hiltViewModel(),
+    challengeVm: ReadingChallengeViewModel = hiltViewModel()  // ← wired here
 ) {
     val state    by vm.state.collectAsState()
     val ep       = state.episode
@@ -669,6 +682,11 @@ fun EpisodeReaderScreen(
         val page = pagerState.currentPage
         if (page != state.currentPage) {
             vm.onPageChange(page, currentUserId, storyId, ep)
+            // ── Record page read for reading challenge ───────────────────
+            // Only count if user is actively reading (not just loading)
+            if (state.pages.isNotEmpty() && !state.isLoading) {
+                challengeVm.recordPageRead(currentUserId)
+            }
         }
     }
 
