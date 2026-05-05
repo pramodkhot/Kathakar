@@ -2201,6 +2201,8 @@ fun LibraryScreen(userId: String, onStoryClick: (String) -> Unit, onBack: () -> 
 @Composable
 fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onSubscribe: () -> Unit,
                   onBack: () -> Unit, onAdminDashboard: () -> Unit,
+                  onEditProfile: () -> Unit = {},
+                  onCoinDetails: () -> Unit = {},
                   onWriteClick: () -> Unit = {}, onLibraryClick: () -> Unit = {},
                   onPoemsClick: () -> Unit = {}, onNotifications: () -> Unit = {},
                   onSettings: () -> Unit = {}, vm: ProfileViewModel = hiltViewModel()) {
@@ -2209,7 +2211,6 @@ fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onS
     Scaffold(topBar = { TopAppBar(title = { Text(text = stringResource(R.string.profile_title)) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
         actions = {
-            // Notifications bell
             IconButton(onClick = onNotifications) {
                 Icon(Icons.Default.Notifications, contentDescription = "Notifications",
                     tint = MaterialTheme.colorScheme.onSurface)
@@ -2222,11 +2223,24 @@ fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onS
     ) { p ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
+                // ── Profile header ─────────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(50), modifier = Modifier.size(60.dp)) {
-                        Box(contentAlignment = Alignment.Center) { Text(text = user.initials, fontWeight = FontWeight.Medium, fontSize = 22.sp, color = MaterialTheme.colorScheme.onPrimaryContainer) } }
+                    // Avatar — photo or initials
+                    if (user.photoUrl.isNotEmpty()) {
+                        AsyncImage(model = user.photoUrl, contentDescription = "Profile",
+                            modifier = Modifier.size(72.dp).clip(RoundedCornerShape(50)),
+                            contentScale = ContentScale.Crop)
+                    } else {
+                        Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(50), modifier = Modifier.size(72.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(user.initials, fontWeight = FontWeight.Medium,
+                                    fontSize = 26.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
+                        }
+                    }
                     Spacer(Modifier.width(14.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(text = user.name, fontWeight = FontWeight.Medium, fontSize = 17.sp)
                         Text(text = user.email, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         val (roleBg, roleColor) = when (user.role) {
@@ -2236,6 +2250,23 @@ fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onS
                         Surface(color = roleBg, shape = RoundedCornerShape(6.dp), modifier = Modifier.padding(top = 4.dp)) {
                             Text(text = user.role.name.lowercase(), fontSize = 11.sp, modifier = Modifier.padding(6.dp, 2.dp), color = roleColor) }
                     }
+                    // Edit profile button
+                    IconButton(onClick = onEditProfile) {
+                        Icon(Icons.Default.Edit, "Edit profile",
+                            tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                // Bio section
+                if (user.bio.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(user.bio, fontSize = 14.sp, lineHeight = 20.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Spacer(Modifier.height(6.dp))
+                    TextButton(onClick = onEditProfile, contentPadding = PaddingValues(0.dp)) {
+                        Text("+ Add about yourself", fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
             item {
@@ -2243,14 +2274,17 @@ fun ProfileScreen(user: User, onSignOut: () -> Unit, onBuyCoins: () -> Unit, onS
                     StatBox(stringResource(R.string.stories_label), user.storiesCount.toString(), Modifier.weight(1f))
                     StatBox(stringResource(R.string.poems_label),   user.poemsCount.toString(),  Modifier.weight(1f))
                     StatBox(stringResource(R.string.followers_label), user.followersCount.toString(), Modifier.weight(1f))
-                    StatBox(stringResource(R.string.coins_balance_label),   user.coinBalance.toString(), Modifier.weight(1f))
+                    StatBox(stringResource(R.string.coins_balance_label), user.coinBalance.toString(), Modifier.weight(1f))
                 }
             }
             if (user.isAdmin) { item { Button(onClick = onAdminDashboard, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)) {
                 Text(text = stringResource(R.string.admin_dashboard), fontWeight = FontWeight.Medium) } } }
             item {
-                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                // ── Coin card — tap to see full details ─────────────────
+                Card(modifier = Modifier.fillMaxWidth().clickable { onCoinDetails() },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(MaterialTheme.colorScheme.primaryContainer)) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(text = stringResource(R.string.coin_balance_title), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(text = user.coinBalance.toString() + " coins", fontSize = 28.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
@@ -2287,6 +2321,300 @@ private fun StatBox(label: String, value: String, modifier: Modifier = Modifier)
             Text(text = label, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSecondaryContainer) }
     }
 }
+
+// ── Edit Profile Screen ────────────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditProfileScreen(
+    user: User,
+    onBack: () -> Unit,
+    onSaved: (name: String, bio: String) -> Unit,
+    vm: ProfileViewModel = hiltViewModel()
+) {
+    val state   = vm.state.collectAsState().value
+    val context = LocalContext.current
+
+    // Photo picker
+    val photoLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { vm.uploadProfilePhoto(user.userId, it) { url -> onSaved(user.name, user.bio) } }
+    }
+
+    LaunchedEffect(state.profileSaveSuccess) {
+        if (state.profileSaveSuccess) { onSaved(state.editName, state.editBio) }
+    }
+    LaunchedEffect(Unit) { vm.openEditProfile(user) }
+
+    Scaffold(topBar = { TopAppBar(
+        title = { Text("Edit Profile") },
+        navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } })
+    }) { p ->
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(p).windowInsetsPadding(WindowInsets.ime).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+
+            // ── Profile photo ──────────────────────────────────────────
+            Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                if (state.isUploadingPhoto) {
+                    Box(modifier = Modifier.size(90.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (user.photoUrl.isNotEmpty()) {
+                    AsyncImage(model = user.photoUrl, contentDescription = "Profile",
+                        modifier = Modifier.size(90.dp).clip(RoundedCornerShape(50)),
+                        contentScale = ContentScale.Crop)
+                } else {
+                    Surface(color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.size(90.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(user.initials, fontSize = 32.sp, fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
+                }
+                // Edit badge
+                Surface(color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(50),
+                    modifier = Modifier.size(28.dp).align(Alignment.BottomEnd)
+                        .clickable { photoLauncher.launch("image/*") }) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Edit, null, tint = Color.White,
+                            modifier = Modifier.size(14.dp))
+                    }
+                }
+            }
+
+            // Photo action buttons
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                OutlinedButton(onClick = { photoLauncher.launch("image/*") },
+                    shape = RoundedCornerShape(20.dp)) {
+                    Text("Change Photo", fontSize = 13.sp)
+                }
+                if (user.photoUrl.isNotEmpty()) {
+                    OutlinedButton(onClick = { vm.removeProfilePhoto(user.userId) {} },
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error)) {
+                        Text("Remove", fontSize = 13.sp)
+                    }
+                }
+            }
+
+            HorizontalDivider()
+
+            // ── Name ───────────────────────────────────────────────────
+            OutlinedTextField(
+                value = state.editName,
+                onValueChange = vm::onEditName,
+                label = { Text("Display Name") },
+                placeholder = { Text("Your name") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Person, null) }
+            )
+
+            // ── Bio / About me ─────────────────────────────────────────
+            OutlinedTextField(
+                value = state.editBio,
+                onValueChange = vm::onEditBio,
+                label = { Text("About Me") },
+                placeholder = { Text("Tell readers about yourself...") },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                shape = RoundedCornerShape(12.dp),
+                minLines = 4,
+                maxLines = 8,
+                supportingText = { Text("${state.editBio.length}/300 characters",
+                    fontSize = 11.sp) }
+            )
+
+            // Error
+            state.error?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+            }
+
+            // Save button
+            Button(
+                onClick = { vm.saveProfile(user.userId, state.editName, state.editBio) },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                enabled = !state.isSavingProfile
+            ) {
+                if (state.isSavingProfile) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp, color = Color.White)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Saving...")
+                } else {
+                    Text("Save Profile", fontWeight = FontWeight.Medium)
+                }
+            }
+        }
+    }
+}
+
+// ── Coin Details Screen ────────────────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CoinDetailsScreen(
+    user: User,
+    onBack: () -> Unit,
+    onBuyCoins: () -> Unit,
+    vm: ProfileViewModel = hiltViewModel()
+) {
+    val state = vm.state.collectAsState().value
+    LaunchedEffect(user.userId) { vm.load(user.userId) }
+
+    // Calculate stats from transaction history
+    val totalSpent   = state.coinHistory.filter { it.coinsAmount < 0 }.sumOf { -it.coinsAmount }
+    val totalEarned  = state.coinHistory.filter { it.coinsAmount > 0 }.sumOf { it.coinsAmount }
+    val tipsSent     = state.coinHistory.filter { it.type == "POEM_TIP_GIVEN" }.sumOf { -it.coinsAmount }
+    val tipsReceived = state.coinHistory.filter { it.type == "POEM_TIP_RECEIVED" }.sumOf { it.coinsAmount }
+    val coinsFromUnlocks = state.coinHistory.filter { it.type.contains("UNLOCK") }.sumOf { -it.coinsAmount }
+
+    Scaffold(topBar = { TopAppBar(
+        title = { Text("Coin Details") },
+        navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } })
+    }) { p ->
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(p),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            // ── Balance card ────────────────────────────────────────────
+            item {
+                Card(modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(MaterialTheme.colorScheme.primaryContainer)) {
+                    Column(modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Current Balance", fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                        Text("${user.coinBalance}", fontSize = 48.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary)
+                        Text("coins", fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                        Spacer(Modifier.height(12.dp))
+                        Button(onClick = onBuyCoins,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)) {
+                            Text("Buy More Coins")
+                        }
+                    }
+                }
+            }
+
+            // ── Stats grid ─────────────────────────────────────────────
+            item {
+                Text("Coin Summary", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CoinStatCard("Total Earned", "+$totalEarned",
+                        MaterialTheme.colorScheme.tertiaryContainer,
+                        MaterialTheme.colorScheme.onTertiaryContainer,
+                        Modifier.weight(1f))
+                    CoinStatCard("Total Spent", "-$totalSpent",
+                        MaterialTheme.colorScheme.errorContainer,
+                        MaterialTheme.colorScheme.onErrorContainer,
+                        Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CoinStatCard("Tips Given", "-$tipsSent",
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        Modifier.weight(1f))
+                    CoinStatCard("Tips Received", "+$tipsReceived",
+                        MaterialTheme.colorScheme.secondaryContainer,
+                        MaterialTheme.colorScheme.onSecondaryContainer,
+                        Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(8.dp))
+                CoinStatCard("Story Unlocks", "-$coinsFromUnlocks",
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    Modifier.fillMaxWidth())
+            }
+
+            // ── Transaction history ─────────────────────────────────────
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Text("Transaction History", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+
+            if (state.isLoading) {
+                item { Box(Modifier.fillMaxWidth().padding(32.dp),
+                    contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
+            }
+
+            if (state.coinHistory.isEmpty() && !state.isLoading) {
+                item {
+                    Box(Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center) {
+                        Text("No transactions yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            items(state.coinHistory, key = { it.txnId }) { txn ->
+                CoinTransactionRow(txn)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CoinStatCard(label: String, value: String, bg: androidx.compose.ui.graphics.Color,
+                          fg: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
+    Surface(color = bg, shape = RoundedCornerShape(12.dp), modifier = modifier) {
+        Column(modifier = Modifier.padding(14.dp, 12.dp)) {
+            Text(value, fontWeight = FontWeight.Bold, fontSize = 20.sp, color = fg)
+            Text(label, fontSize = 11.sp, color = fg.copy(alpha = 0.75f))
+        }
+    }
+}
+
+@Composable
+private fun CoinTransactionRow(txn: CoinTransaction) {
+    val isPositive = txn.coinsAmount > 0
+    val amountColor = if (isPositive) Color(0xFF22C55E) else MaterialTheme.colorScheme.error
+    val amountText  = if (isPositive) "+${txn.coinsAmount}" else "${txn.coinsAmount}"
+    val icon = when {
+        txn.type.contains("TIP_RECEIVED") -> "🎁"
+        txn.type.contains("TIP_GIVEN")    -> "💝"
+        txn.type.contains("UNLOCK")       -> "🔓"
+        txn.type.contains("PURCHASE")     -> "🛒"
+        txn.type.contains("SIGNUP")       -> "🎉"
+        txn.type.contains("EARNED")       -> "✍️"
+        else                              -> "🪙"
+    }
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(icon, fontSize = 22.sp, modifier = Modifier.width(36.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(txn.note.ifEmpty { txn.type.replace("_", " ").lowercase()
+                .replaceFirstChar { it.uppercase() } },
+                fontSize = 14.sp, fontWeight = FontWeight.Medium,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val date = txn.createdAt?.toDate()?.let {
+                java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(it)
+            } ?: ""
+            if (date.isNotEmpty()) {
+                Text(date, fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Text(amountText, color = amountColor,
+            fontWeight = FontWeight.Bold, fontSize = 15.sp)
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+}
+
 
 // ── Admin Dashboard ───────────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
