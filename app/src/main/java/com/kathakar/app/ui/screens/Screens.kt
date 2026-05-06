@@ -641,7 +641,7 @@ fun EpisodeReaderScreen(
     // Load episode + restore saved page
     LaunchedEffect(episodeId) {
         vm.load(episodeId, currentUserId)
-        vm.loadSavedPage(currentUserId, storyId)
+        vm.loadSavedPage(currentUserId, storyId, episodeId)  // chapter-specific page restore
     }
 
     // Split into pages once episode content is loaded
