@@ -322,7 +322,23 @@ fun HomeScreen(user: User, onStoryClick: (String) -> Unit, onWriteClick: () -> U
         topBar = { TopAppBar(
             title = { Text(text = stringResource(R.string.app_name), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
             actions = {
-                // ⚙️ Settings gear icon
+                // 📤 Share app — LEFT of settings
+                val context = LocalContext.current
+                IconButton(onClick = {
+                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Read stories & poems on KathaKar!")
+                        putExtra(android.content.Intent.EXTRA_TEXT,
+                            "📖 Discover amazing stories and poems on KathaKar!\n" +
+                            "Download the app: https://kathakar.app\n" +
+                            "#KathaKar #Stories #Poems")
+                    }
+                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share KathaKar"))
+                }) {
+                    Icon(Icons.Default.Share, contentDescription = "Share app",
+                        tint = MaterialTheme.colorScheme.primary)
+                }
+                // ⚙️ Settings — stays on RIGHT where it was
                 IconButton(onClick = onSettingsClick) {
                     Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title),
                         tint = MaterialTheme.colorScheme.onSurface)
@@ -477,9 +493,32 @@ fun StoryDetailScreen(storyId: String, user: User, onBack: () -> Unit,
     }
     Scaffold(topBar = { TopAppBar(title = { Text(text = state.story?.title ?: "", maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
-        actions = { IconButton(onClick = { state.story?.let { vm.toggleBookmark(user.userId, it) } }) {
-            Icon(if (state.isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null,
-                tint = if (state.isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) } }) }
+        actions = {
+            // 📤 Share story
+            val ctx = LocalContext.current
+            IconButton(onClick = {
+                val story = state.story
+                if (story != null) {
+                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Read '${story.title}' on KathaKar!")
+                        putExtra(android.content.Intent.EXTRA_TEXT,
+                            "📖 Read '${story.title}' by ${story.authorName} on KathaKar!\n\n" +
+                            "${story.description.take(100)}...\n\n" +
+                            "Open in app: kathakar://story/${story.storyId}\n" +
+                            "Download KathaKar: https://kathakar.app")
+                    }
+                    ctx.startActivity(android.content.Intent.createChooser(shareIntent, "Share Story"))
+                }
+            }) {
+                Icon(Icons.Default.Share, "Share story", tint = MaterialTheme.colorScheme.primary)
+            }
+            // Bookmark
+            IconButton(onClick = { state.story?.let { vm.toggleBookmark(user.userId, it) } }) {
+                Icon(if (state.isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null,
+                    tint = if (state.isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+            }
+        }) }
     ) { p ->
         if (state.isLoading) { Box(modifier = Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
         LazyColumn(modifier = Modifier.fillMaxSize().padding(p), contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -741,6 +780,25 @@ fun EpisodeReaderScreen(
                         }
                         IconButton(onClick = { vm.toggleComments(); vm.loadComments(episodeId) }) {
                             Text("💬", fontSize = 16.sp)
+                        }
+                        // 📤 Share chapter
+                        val readerCtx = LocalContext.current
+                        IconButton(onClick = {
+                            val story = ep
+                            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_SUBJECT,
+                                    "Read Chapter ${story?.chapterNumber} on KathaKar!")
+                                putExtra(android.content.Intent.EXTRA_TEXT,
+                                    "📖 Reading '${story?.title ?: "a story"}' on KathaKar!\n\n" +
+                                    "Open in app: kathakar://story/$storyId\n" +
+                                    "Download KathaKar: https://kathakar.app")
+                            }
+                            readerCtx.startActivity(android.content.Intent.createChooser(shareIntent, "Share Chapter"))
+                        }) {
+                            Icon(Icons.Default.Share, "Share chapter",
+                                tint = readerSubColor,
+                                modifier = Modifier.size(20.dp))
                         }
                         IconButton(onClick = { vm.toggleSettingsBar() }) {
                             Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp),
@@ -1880,6 +1938,24 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                     Icon(Icons.Default.ArrowBack, null, tint = poemTextColor) } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = poemTopBar),
                 actions = {
+                    // 📤 Share poem
+                    val ctx = LocalContext.current
+                    IconButton(onClick = {
+                        val p = state.poem
+                        if (p != null) {
+                            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Read '${p.title}' on KathaKar!")
+                                putExtra(android.content.Intent.EXTRA_TEXT,
+                                    "🖊️ Read '${p.title}' by ${p.authorName} on KathaKar!\n\n" +
+                                    "Open in app: kathakar://poem/${p.poemId}\n" +
+                                    "Download KathaKar: https://kathakar.app")
+                            }
+                            ctx.startActivity(android.content.Intent.createChooser(shareIntent, "Share Poem"))
+                        }
+                    }) {
+                        Icon(Icons.Default.Share, "Share poem", tint = poemTextColor)
+                    }
                     IconButton(onClick = { showPoemSettings = !showPoemSettings }) {
                         Icon(Icons.Default.Settings, null,
                             tint = MaterialTheme.colorScheme.primary,
@@ -1910,15 +1986,18 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
 
             // ── Settings bar ────────────────────────────────────────────
             if (showPoemSettings) {
-                Surface(color = if (isPoemNightMode) Color(0xFF2A2A2A)
-                               else MaterialTheme.colorScheme.surfaceVariant) {
+                // Use same explicit colors as story reader for consistency
+                val settingsBg   = if (isPoemNightMode) Color(0xFF2A2A2A) else Color(0xFFF3F3F3)
+                val settingsFg   = if (isPoemNightMode) Color(0xFFE0D5C5) else Color(0xFF1A1A1A)
+                val settingsSub  = if (isPoemNightMode) Color(0xFFB0A898) else Color(0xFF666666)
+                Surface(color = settingsBg, modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         // Header with close button
                         Row(modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically) {
                             Text("Reading Settings", fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp, color = poemTextColor,
+                                fontSize = 14.sp, color = settingsFg,
                                 modifier = Modifier.weight(1f))
                             IconButton(onClick = { showPoemSettings = false },
                                 modifier = Modifier.size(32.dp)) {
@@ -1927,25 +2006,35 @@ fun PoemDetailScreen(poemId: String, authorId: String, user: User,
                                     modifier = Modifier.size(20.dp))
                             }
                         }
+                        // Font size slider
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("A", fontSize = 14.sp, color = poemTextColor,
+                            Text("A", fontSize = 14.sp, color = settingsFg,
                                 modifier = Modifier.width(24.dp))
                             Slider(value = poemFontSize.toFloat(),
                                 onValueChange = { poemFontSize = it.toInt() },
                                 valueRange = 14f..28f, steps = 6,
-                                modifier = Modifier.weight(1f))
-                            Text("A", fontSize = 22.sp, color = poemTextColor)
+                                modifier = Modifier.weight(1f),
+                                colors = SliderDefaults.colors(
+                                    thumbColor       = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                                ))
+                            Text("A", fontSize = 22.sp, color = settingsFg)
                         }
                         Text("Font size: ${poemFontSize}sp", fontSize = 11.sp,
-                            color = poemSubColor)
+                            color = settingsSub)
+                        // Night / Day mode toggle
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(if (isPoemNightMode) "🌙" else "☀️", fontSize = 18.sp)
                             Spacer(Modifier.width(10.dp))
                             Text(if (isPoemNightMode) "Night mode" else "Day mode",
                                 modifier = Modifier.weight(1f), fontSize = 14.sp,
-                                color = poemTextColor)
+                                color = settingsFg)
                             Switch(checked = isPoemNightMode,
-                                onCheckedChange = { isPoemNightMode = it })
+                                onCheckedChange = { isPoemNightMode = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                                ))
                         }
                     }
                 }
