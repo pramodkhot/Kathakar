@@ -334,7 +334,8 @@ class StoryRepository @Inject constructor(
     // ── Reading Progress ───────────────────────────────────────────────────────
     suspend fun saveReadingProgress(progress: ReadingProgress) {
         try {
-            val docId = "${progress.userId}_${progress.storyId}"
+            // Key = userId_storyId_episodeId — each chapter has its own record
+            val docId = "${progress.userId}_${progress.storyId}_${progress.lastEpisodeId}"
             db.collection(Col.READING_PROGRESS).document(docId)
                 .set(progress.copy(updatedAt = Timestamp.now())).await()
         } catch (_: Exception) { }
