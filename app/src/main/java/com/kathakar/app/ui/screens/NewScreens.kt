@@ -415,9 +415,11 @@ fun ReadingSettingsBar(
     onClose: () -> Unit = {}       // ← close button callback
 ) {
     val barBg = if (isNightMode) androidx.compose.ui.graphics.Color(0xFF2A2A2A)
-                else MaterialTheme.colorScheme.surfaceVariant
-    val textColor = if (isNightMode) androidx.compose.ui.graphics.Color(0xFFE0D5C5)
-                    else MaterialTheme.colorScheme.onSurface
+                else androidx.compose.ui.graphics.Color(0xFFF3F3F3)
+    val barFg = if (isNightMode) androidx.compose.ui.graphics.Color(0xFFE0D5C5)
+                else androidx.compose.ui.graphics.Color(0xFF1A1A1A)
+    val barSub = if (isNightMode) androidx.compose.ui.graphics.Color(0xFFB0A898)
+                 else androidx.compose.ui.graphics.Color(0xFF666666)
 
     Surface(color = barBg, tonalElevation = 4.dp, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp),
@@ -427,7 +429,7 @@ fun ReadingSettingsBar(
             Row(modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically) {
                 Text("Reading Settings", fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp, color = textColor, modifier = Modifier.weight(1f))
+                    fontSize = 14.sp, color = barFg, modifier = Modifier.weight(1f))
                 // ── Close button — clear and obvious ─────────────────────
                 IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Close, contentDescription = "Close settings",
@@ -438,7 +440,7 @@ fun ReadingSettingsBar(
 
             // Font size slider
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("A", fontSize = 14.sp, color = textColor,
+                Text("A", fontSize = 14.sp, color = barFg,
                     modifier = Modifier.width(24.dp))
                 Slider(
                     value = KathakarMeta.FONT_SIZES.indexOf(fontSize).toFloat(),
@@ -454,17 +456,17 @@ fun ReadingSettingsBar(
                         activeTrackColor = MaterialTheme.colorScheme.primary
                     )
                 )
-                Text("A", fontSize = 22.sp, color = textColor)
+                Text("A", fontSize = 22.sp, color = barFg)
             }
             Text("Font size: ${fontSize}sp", fontSize = 11.sp,
-                color = textColor.copy(alpha = 0.6f))
+                color = barSub)
 
             // Night / Day mode toggle
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (isNightMode) "🌙" else "☀️", fontSize = 18.sp)
                 Spacer(Modifier.width(10.dp))
                 Text(if (isNightMode) "Night mode" else "Day mode",
-                    modifier = Modifier.weight(1f), fontSize = 14.sp, color = textColor)
+                    modifier = Modifier.weight(1f), fontSize = 14.sp, color = barFg)
                 Switch(checked = isNightMode, onCheckedChange = onNightMode,
                     colors = androidx.compose.material3.SwitchDefaults.colors(
                         checkedThumbColor  = MaterialTheme.colorScheme.primary,
