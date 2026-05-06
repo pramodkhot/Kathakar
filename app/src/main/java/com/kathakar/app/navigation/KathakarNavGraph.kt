@@ -59,6 +59,38 @@ fun KathakarNavGraph(navController: NavHostController) {
     val authVM: AuthViewModel = hiltViewModel()
     val auth by authVM.state.collectAsState()
 
+    // ── Handle incoming deep links (story/poem share links) ────────────────
+    val activity = LocalContext.current as? android.app.Activity
+    LaunchedEffect(auth.isAuthenticated) {
+        if (auth.isAuthenticated) {
+            val intent = activity?.intent
+            val data   = intent?.data
+            if (data != null) {
+                val path = data.pathSegments
+                when {
+                    // kathakar://story/{storyId} or https://kathakar.app/story/{storyId}
+                    (data.scheme == "kathakar" && data.host == "story") ||
+                    (data.host == "kathakar.app" && path.firstOrNull() == "story") -> {
+                        val storyId = if (data.scheme == "kathakar") data.pathSegments.firstOrNull()
+                                      else path.getOrNull(1)
+                        storyId?.let { navController.navigate(Screen.StoryDetail.go(it)) }
+                    }
+                    // kathakar://poem/{poemId} or https://kathakar.app/poem/{poemId}
+                    (data.scheme == "kathakar" && data.host == "poem") ||
+                    (data.host == "kathakar.app" && path.firstOrNull() == "poem") -> {
+                        val poemId = if (data.scheme == "kathakar") data.pathSegments.firstOrNull()
+                                     else path.getOrNull(1)
+                        poemId?.let {
+                            val user = auth.user
+                            if (user != null) navController.navigate(Screen.PoemDetail.go(it, ""))
+                        }
+                    }
+                }
+                intent.data = null // consume so it doesn't re-navigate on recompose
+            }
+        }
+    }
+
     NavHost(navController = navController,
         startDestination = if (auth.isAuthenticated) Screen.Home.route else Screen.Login.route) {
 
