@@ -42,6 +42,7 @@ class AuthViewModel @Inject constructor(private val repo: AuthRepository) : View
         doAuth { repo.register(n, e, p) }
     }
     fun signOut() { repo.signOut(); _s.value = AuthUiState() }
+    fun showError(msg: String) = _s.update { it.copy(error = msg) }
 
     // Call after profile save to update the user object shown in UI
     fun refreshUser(userId: String) = viewModelScope.launch {
