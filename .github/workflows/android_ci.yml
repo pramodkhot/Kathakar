@@ -43,7 +43,17 @@ jobs:
           mkdir -p ~/.android
           echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
           echo "Keystore written"
-          keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android 2>/dev/null | grep "SHA1:" || echo "SHA1 check done"
+
+      - name: Print SHA-1 fingerprint (needed for Firebase Google Sign-In)
+        run: |
+          echo "=================================================="
+          echo "SHA-1 FINGERPRINT FOR FIREBASE CONSOLE:"
+          keytool -list -v \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -storepass android \
+            -keypass android 2>/dev/null | grep -E "SHA1:|SHA256:"
+          echo "=================================================="
 
       - name: Install Gradle
         run: |
