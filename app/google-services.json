@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "843855541873",
+    "project_id": "kathakar-8b43a",
+    "storage_bucket": "kathakar-8b43a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:843855541873:android:3cf7040b18dc995bed4dd0",
+        "android_client_info": {
+          "package_name": "com.kathakar.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "843855541873-l8tmuac0lbkutvjbpjgkhce062cvnur5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kathakar.app",
+            "certificate_hash": "b6754ac93d6e99adb70302f6dd29cbd8e7f01d3b"
+          }
+        },
+        {
+          "client_id": "843855541873-ub6t3asqtsuok8cpofmula1ib3940c1d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6DbrwsXt2IkdlFlZ_DGyky6BJtV-u4hI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "843855541873-ub6t3asqtsuok8cpofmula1ib3940c1d.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
