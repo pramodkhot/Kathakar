@@ -88,8 +88,21 @@ fun LoginScreen(viewModel: AuthViewModel, onSuccess: () -> Unit) {
         .requestIdToken(ctx.getString(R.string.default_web_client_id)).requestEmail().build() }
     val googleClient   = remember { GoogleSignIn.getClient(ctx, gso) }
     val googleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        try { viewModel.signInWithGoogle(GoogleSignIn.getSignedInAccountFromIntent(r.data).getResult(ApiException::class.java))
-        } catch (_: ApiException) { }
+        try {
+            val account = GoogleSignIn.getSignedInAccountFromIntent(r.data)
+                .getResult(ApiException::class.java)
+            viewModel.signInWithGoogle(account)
+        } catch (e: ApiException) {
+            // Show exact error code to help diagnose
+            viewModel.showError("Google Sign-In failed (code ${e.statusCode}). " +
+                when (e.statusCode) {
+                    10   -> "SHA-1 not registered in Firebase."
+                    12501-> "Sign-in cancelled."
+                    12500-> "Google Play Services error."
+                    7    -> "Network error."
+                    else -> "Error: ${e.message}"
+                })
+        }
     }
     LaunchedEffect(state.isAuthenticated) { if (state.isAuthenticated) onSuccess() }
     var email by remember { mutableStateOf("") }; var password by remember { mutableStateOf("") }
